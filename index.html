@@ -29,9 +29,14 @@
     const CREATOR_EMAIL = "schena.g2010@gmail.com";
 
     // Inizializzazione Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    let app, auth, db;
+    try {
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+    } catch (e) {
+      console.warn("Firebase non ancora configurato correttamente. Funzionamento in modalità Demo locale.");
+    }
 
     window.firebaseAuth = auth;
     window.firebaseDb = db;
@@ -132,10 +137,6 @@
     }
 
     .btn:hover { background: var(--accent-hover); }
-    .btn-creator { background: var(--creator-badge); color: #fff; }
-    .btn-creator:hover { background: #a855f7; }
-    .btn-danger { background: #dc2626; color: #fff; }
-    .btn-danger:hover { background: #ef4444; }
 
     .app-container { display: flex; flex: 1; }
 
@@ -221,7 +222,7 @@
       position: relative;
     }
 
-    .card-img { height: 180px; width: 100%; object-fit: cover; background: #000; }
+    .card-img { height: 180px; width: 100%; object-fit: cover; background: #1a1d2d; }
     .card-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
     .card-title { font-family: 'Cinzel', serif; color: var(--accent); margin: 0; font-size: 1.2rem; }
 
@@ -253,14 +254,12 @@
       border: 1px solid var(--accent);
       width: 100%;
       max-width: 550px;
-      max-height: 90vh;
-      overflow-y: auto;
     }
 
     .form-group { margin-bottom: 1.25rem; }
     .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--accent); font-size: 0.85rem; }
 
-    input[type="text"], input[type="email"], input[type="password"], textarea {
+    input[type="text"], input[type="email"], input[type="password"] {
       width: 100%;
       padding: 0.65rem;
       background: #000;
@@ -268,7 +267,6 @@
       color: #fff;
       border-radius: 4px;
       box-sizing: border-box;
-      font-family: inherit;
     }
 
     .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
@@ -295,11 +293,6 @@
 
       <div id="user-info" style="display:none; align-items: center; gap: 0.75rem;">
         <span id="user-display" style="color: var(--accent); font-weight: bold; font-size: 0.85rem;"></span>
-        
-        <button id="creator-panel-btn" class="btn btn-creator" style="display:none;" onclick="openCreatorPanel()">
-          <i class="fa-solid fa-crown"></i> Pannello Creatore
-        </button>
-
         <button class="btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
       </div>
     </div>
@@ -310,9 +303,6 @@
       <div>
         <div class="sidebar-section-title">
           <span>Sezioni del Mondo</span>
-          <button id="add-section-btn" class="btn" style="padding: 2px 6px; font-size: 0.75rem; display:none;" onclick="openAddSectionModal()">
-            <i class="fa-solid fa-plus"></i>
-          </button>
         </div>
         <ul id="sections-menu" class="menu-list"></ul>
       </div>
@@ -323,12 +313,9 @@
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <div>
-          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Caricamento...</h2>
-          <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;"></p>
+          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Benvenuto</h2>
+          <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;">Seleziona una sezione per esplorare l'enciclopedia.</p>
         </div>
-        <button id="add-card-btn" class="btn" style="display:none;" onclick="openAddCardModal()">
-          <i class="fa-solid fa-square-plus"></i> Nuova Scheda
-        </button>
       </div>
 
       <div id="cards-grid" class="cards-grid"></div>
@@ -356,38 +343,124 @@
   </div>
 
   <script type="module">
+    // DATI DEMO DI ESEMPIO (Mostrati se il database è vuoto o in fase di caricamento)
+    const demoData = [
+      {
+        id: "personaggi",
+        title: "Personaggi",
+        desc: "I protagonisti, alleati e nemici incontrati durante le avventure.",
+        cards: [
+          {
+            title: "Capitano Valerius",
+            desc: "Comandante della Guardia delle Ombre. Un veterano di molte battaglie, noto per la sua lealtà incondizionata al regno.",
+            secret: "Custodisce la mappa segreta delle catacombe dimenticate.",
+            img: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500"
+          },
+          {
+            title: "Eldrin l'Eremita",
+            desc: "Saggio e incantatore che vive nei boschi sussurranti a nord della capitale.",
+            secret: "È l'ultimo a conoscere la formula per il veleno di Drago.",
+            img: "https://images.unsplash.com/photo-1514539079130-25950c84af65?w=500"
+          }
+        ]
+      },
+      {
+        id: "luoghi",
+        title: "Luoghi",
+        desc: "Città, fortezze e rovine antiche del mondo.",
+        cards: [
+          {
+            title: "Fortezza di Roccanera",
+            desc: "La sede principale dell'ordine della Guardia. Inespugnabile da oltre tre secoli.",
+            secret: "Esiste un passaggio segreto che porta direttamente al mare sotto la scogliera.",
+            img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500"
+          }
+        ]
+      },
+      {
+        id: "fazioni",
+        title: "Fazioni",
+        desc: "Gilde, ordini cavallereschi e associazioni segrete.",
+        cards: [
+          {
+            title: "I Corvi della Notte",
+            desc: "Un'organizzazione di spie e assassini che opera nell'ombra della capitale.",
+            secret: "Il loro leader risponde al nome di 'Ombra Silenziosa'.",
+            img: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500"
+          }
+        ]
+      }
+    ];
+
+    let currentSectionIndex = 0;
     let currentUserRole = "visitor";
     let currentUserEmail = "";
 
     window.addEventListener('DOMContentLoaded', () => {
-      const auth = window.firebaseAuth;
+      renderSidebar();
+      selectSection(0);
 
-      window.onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          currentUserEmail = user.email;
-          if (user.email === window.CREATOR_EMAIL) {
-            currentUserRole = "creator";
-          } else {
-            const userDoc = await window.getDoc(window.doc(window.firebaseDb, "users", user.uid));
-            if (userDoc.exists() && userDoc.data().role === "admin") {
-              currentUserRole = "admin";
+      if (window.firebaseAuth) {
+        window.onAuthStateChanged(window.firebaseAuth, async (user) => {
+          if (user) {
+            currentUserEmail = user.email;
+            if (user.email === window.CREATOR_EMAIL) {
+              currentUserRole = "creator";
             } else {
-              currentUserRole = "visitor";
+              currentUserRole = "admin";
             }
+          } else {
+            currentUserRole = "visitor";
+            currentUserEmail = "";
           }
-        } else {
-          currentUserRole = "visitor";
-          currentUserEmail = "";
-        }
-        updateUI();
-      });
+          updateUI();
+        });
+      }
     });
+
+    function renderSidebar() {
+      const menu = document.getElementById('sections-menu');
+      menu.innerHTML = '';
+
+      demoData.forEach((sec, idx) => {
+        const li = document.createElement('li');
+        li.className = `menu-item ${idx === currentSectionIndex ? 'active' : ''}`;
+        li.innerText = sec.title;
+        li.onclick = () => selectSection(idx);
+        menu.appendChild(li);
+      });
+    }
+
+    function selectSection(idx) {
+      currentSectionIndex = idx;
+      renderSidebar();
+
+      const sec = demoData[idx];
+      document.getElementById('active-section-title').innerText = sec.title;
+      document.getElementById('active-section-desc').innerText = sec.desc;
+
+      const grid = document.getElementById('cards-grid');
+      grid.innerHTML = '';
+
+      sec.cards.forEach(card => {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card';
+        cardDiv.innerHTML = `
+          <img src="${card.img}" class="card-img" alt="${card.title}">
+          <div class="card-body">
+            <h3 class="card-title">${card.title}</h3>
+            <p style="margin:0; font-size:0.9rem; color: #cbd5e1; line-height:1.4;">${card.desc}</p>
+            ${currentUserRole !== 'visitor' ? `<div class="secret-box"><strong>🔒 Note Segrete:</strong> ${card.secret}</div>` : ''}
+          </div>
+        `;
+        grid.appendChild(cardDiv);
+      });
+    }
 
     function updateUI() {
       const loginBtn = document.getElementById('login-btn');
       const userInfo = document.getElementById('user-info');
       const userDisplay = document.getElementById('user-display');
-      const creatorBtn = document.getElementById('creator-panel-btn');
       const roleBanner = document.getElementById('role-banner');
 
       if (currentUserRole !== "visitor") {
@@ -395,21 +468,16 @@
         userInfo.style.display = 'flex';
         userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
 
-        if (currentUserRole === "creator") {
-          creatorBtn.style.display = 'inline-flex';
-          roleBanner.className = 'status-banner creator';
-          roleBanner.innerHTML = `<i class="fa-solid fa-crown"></i> Account <strong>CREATORE</strong> attivo.`;
-          roleBanner.style.display = 'flex';
-        } else {
-          roleBanner.className = 'status-banner admin';
-          roleBanner.innerHTML = `<i class="fa-solid fa-user-shield"></i> Account <strong>ADMIN</strong> attivo.`;
-          roleBanner.style.display = 'flex';
-        }
+        roleBanner.className = `status-banner ${currentUserRole}`;
+        roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Modalità <strong>${currentUserRole.toUpperCase()}</strong> attiva. Ora puoi visualizzare anche le note segrete!`;
+        roleBanner.style.display = 'flex';
       } else {
         loginBtn.style.display = 'inline-flex';
         userInfo.style.display = 'none';
         roleBanner.style.display = 'none';
       }
+
+      selectSection(currentSectionIndex);
     }
 
     window.handleLogin = async () => {
@@ -422,13 +490,13 @@
         window.closeModal('login-modal');
         err.style.display = 'none';
       } catch (e) {
-        err.innerText = "Credenziali errate: " + e.message;
+        err.innerText = "Credenziali errate o utente non trovato.";
         err.style.display = 'block';
       }
     };
 
     window.handleLogout = async () => {
-      await window.signOut(window.firebaseAuth);
+      if (window.firebaseAuth) await window.signOut(window.firebaseAuth);
     };
 
     window.openModal = (id) => document.getElementById(id).style.display = 'flex';
