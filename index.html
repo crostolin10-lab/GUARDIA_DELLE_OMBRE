@@ -13,11 +13,11 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // ⚠️ INCOLLA QUI LE TUE CHIAVI COPIATE DA FIREBASE
     const firebaseConfig = {
-        apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
+  apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
   authDomain: "la-guardia-delle-ombre-adf24.firebaseapp.com",
   projectId: "la-guardia-delle-ombre-adf24",
   storageBucket: "la-guardia-delle-ombre-adf24.firebasestorage.app",
@@ -28,9 +28,14 @@
     // ⚠️ INSERISCI QUI LA TUA EMAIL PERSONALE (CREATORE)
     const CREATOR_EMAIL = "schena.g2010@gmail.com";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    let app, auth, db;
+    try {
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+    } catch (e) {
+      console.warn("Firebase non inizializzato correttamente:", e);
+    }
 
     window.firebaseAuth = auth;
     window.firebaseDb = db;
@@ -42,7 +47,6 @@
     window.setDoc = setDoc;
     window.deleteDoc = deleteDoc;
     window.collection = collection;
-    window.getDocs = getDocs;
     window.onSnapshot = onSnapshot;
   </script>
 
@@ -431,7 +435,7 @@
     </div>
   </div>
 
-  <!-- MODALE SCHEDA (ADD / EDIT) CON CAMPI EXTRA -->
+  <!-- MODALE SCHEDA (ADD / EDIT) -->
   <div id="card-modal" class="modal">
     <div class="modal-content">
       <h3 id="card-modal-title" style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Gestione Scheda</h3>
@@ -479,11 +483,11 @@
       <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Accesso Amministratore</h3>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="login-email">
+        <input type="email" id="login-email" placeholder="tua-email@esempio.com">
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="login-password">
+        <input type="password" id="login-password" placeholder="••••••••">
       </div>
       <div id="login-error" style="color: #ef4444; font-size: 0.85rem; display:none; margin-bottom: 1rem;"></div>
       <div class="modal-actions">
@@ -492,6 +496,20 @@
       </div>
     </div>
   </div>
+
+  <!-- SCRIPT GLOBALE E FUNZIONI MODALE -->
+  <script>
+    // Dichiarazione globale immediata per evitare qualsiasi blocco di caricamento
+    window.openModal = function(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.style.display = 'flex';
+    };
+
+    window.closeModal = function(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.style.display = 'none';
+    };
+  </script>
 
   <script type="module">
     let sectionsData = [];
@@ -557,6 +575,7 @@
 
     function renderSidebar() {
       const menu = document.getElementById('sections-menu');
+      if (!menu) return;
       menu.innerHTML = '';
 
       if (sectionsData.length === 0) {
@@ -579,18 +598,20 @@
 
     function renderActiveSection() {
       const sec = sectionsData.find(s => s.id === activeSectionId);
+      const titleEl = document.getElementById('active-section-title');
+      const descEl = document.getElementById('active-section-desc');
+      const grid = document.getElementById('cards-grid');
+
       if (!sec) {
-        document.getElementById('active-section-title').innerText = "Seleziona una Sezione";
-        document.getElementById('active-section-desc').innerText = "";
-        document.getElementById('cards-grid').innerHTML = "";
+        if (titleEl) titleEl.innerText = "Seleziona una Sezione";
+        if (descEl) descEl.innerText = "";
+        if (grid) grid.innerHTML = "";
         return;
       }
 
-      document.getElementById('active-section-title').innerText = sec.title;
-      document.getElementById('active-section-desc').innerText = sec.desc || '';
-
-      const grid = document.getElementById('cards-grid');
-      grid.innerHTML = '';
+      if (titleEl) titleEl.innerText = sec.title;
+      if (descEl) descEl.innerText = sec.desc || '';
+      if (grid) grid.innerHTML = '';
 
       let cards = sec.cards || [];
       
@@ -604,12 +625,11 @@
       }
 
       if (cards.length === 0) {
-        grid.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessuna scheda trovata.</p>';
+        if (grid) grid.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessuna scheda trovata.</p>';
         return;
       }
 
       cards.forEach((card, cardIdx) => {
-        // Genera HTML per i campi extra/sotto-finestre
         let extraFieldsHtml = '';
         if (card.extraFields && Array.isArray(card.extraFields)) {
           card.extraFields.forEach(ef => {
@@ -661,205 +681,4 @@
       const userInfo = document.getElementById('user-info');
       const userDisplay = document.getElementById('user-display');
       const roleBanner = document.getElementById('role-banner');
-      const addSecBtn = document.getElementById('add-sec-btn');
-      const delSecBtn = document.getElementById('delete-sec-btn');
-      const addCardBtn = document.getElementById('add-card-btn');
-      const manageAdminsBtn = document.getElementById('manage-admins-btn');
-
-      if (currentUserRole !== "visitor") {
-        loginBtn.style.display = 'none';
-        userInfo.style.display = 'flex';
-        userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
-
-        roleBanner.className = `status-banner ${currentUserRole}`;
-        roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Accesso <strong>${currentUserRole.toUpperCase()}</strong> attivo: puoi aggiungere campi extra e modificare schede.`;
-        roleBanner.style.display = 'flex';
-
-        addSecBtn.style.display = 'inline-flex';
-        delSecBtn.style.display = 'inline-flex';
-        addCardBtn.style.display = 'inline-flex';
-
-        manageAdminsBtn.style.display = (currentUserRole === 'creator') ? 'inline-flex' : 'none';
-      } else {
-        loginBtn.style.display = 'inline-flex';
-        userInfo.style.display = 'none';
-        roleBanner.style.display = 'none';
-        addSecBtn.style.display = 'none';
-        delSecBtn.style.display = 'none';
-        addCardBtn.style.display = 'none';
-        manageAdminsBtn.style.display = 'none';
-      }
-
-      renderActiveSection();
-    }
-
-    // --- GESTIONE CAMPI EXTRA DINAMICI NELLA MODALE ---
-    window.addExtraFieldInput = (label = '', value = '') => {
-      const container = document.getElementById('extra-fields-inputs-container');
-      const row = document.createElement('div');
-      row.className = 'dynamic-field-row';
-      row.innerHTML = `
-        <input type="text" placeholder="Etichetta (es. Abilità)" value="${label}" style="flex: 1;" class="ef-label">
-        <input type="text" placeholder="Valore / Descrizione" value="${value}" style="flex: 2;" class="ef-value">
-        <button type="button" class="btn btn-danger" style="padding: 6px 10px;" onclick="this.parentElement.remove()"><i class="fa-solid xmark fa-x"></i></button>
-      `;
-      container.appendChild(row);
-    };
-
-    window.openAddCardModal = () => {
-      document.getElementById('card-modal-title').innerText = "Nuova Scheda";
-      document.getElementById('edit-card-index').value = "-1";
-      document.getElementById('card-title-input').value = '';
-      document.getElementById('card-img-input').value = '';
-      document.getElementById('card-desc-input').value = '';
-      document.getElementById('card-secret-input').value = '';
-      document.getElementById('extra-fields-inputs-container').innerHTML = '';
-      openModal('card-modal');
-    };
-
-    window.openEditCardModal = (cardIdx) => {
-      const sec = sectionsData.find(s => s.id === activeSectionId);
-      if (!sec || !sec.cards[cardIdx]) return;
-
-      const card = sec.cards[cardIdx];
-      document.getElementById('card-modal-title').innerText = "Modifica Scheda";
-      document.getElementById('edit-card-index').value = cardIdx;
-      document.getElementById('card-title-input').value = card.title || '';
-      document.getElementById('card-img-input').value = card.img || '';
-      document.getElementById('card-desc-input').value = card.desc || '';
-      document.getElementById('card-secret-input').value = card.secret || '';
-
-      const container = document.getElementById('extra-fields-inputs-container');
-      container.innerHTML = '';
-      if (card.extraFields && Array.isArray(card.extraFields)) {
-        card.extraFields.forEach(ef => {
-          window.addExtraFieldInput(ef.label, ef.value);
-        });
-      }
-
-      openModal('card-modal');
-    };
-
-    window.saveCard = async () => {
-      const idx = parseInt(document.getElementById('edit-card-index').value);
-      const title = document.getElementById('card-title-input').value.trim();
-      const img = document.getElementById('card-img-input').value.trim();
-      const desc = document.getElementById('card-desc-input').value.trim();
-      const secret = document.getElementById('card-secret-input').value.trim();
-
-      // Raccoglie i campi extra dinamici
-      const extraFields = [];
-      const rows = document.querySelectorAll('#extra-fields-inputs-container .dynamic-field-row');
-      rows.forEach(row => {
-        const label = row.querySelector('.ef-label').value.trim();
-        const value = row.querySelector('.ef-value').value.trim();
-        if (label || value) {
-          extraFields.push({ label, value });
-        }
-      });
-
-      if (!title || !activeSectionId) return;
-
-      const sec = sectionsData.find(s => s.id === activeSectionId);
-      if (!sec) return;
-
-      const updatedCards = [...(sec.cards || [])];
-      const cardData = {
-        id: idx >= 0 ? updatedCards[idx].id : Date.now().toString(),
-        title,
-        img,
-        desc,
-        extraFields,
-        secret
-      };
-
-      if (idx >= 0) {
-        updatedCards[idx] = cardData;
-      } else {
-        updatedCards.push(cardData);
-      }
-
-      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
-      try {
-        await window.setDoc(docRef, { ...sec, cards: updatedCards });
-        closeModal('card-modal');
-      } catch (e) {
-        alert("Errore salvataggio: " + e.message);
-      }
-    };
-
-    window.deleteCard = async (cardIdx) => {
-      if (!confirm("Vuoi davvero eliminare questa scheda?")) return;
-
-      const sec = sectionsData.find(s => s.id === activeSectionId);
-      if (!sec) return;
-
-      const updatedCards = [...(sec.cards || [])];
-      updatedCards.splice(cardIdx, 1);
-
-      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
-      try {
-        await window.setDoc(docRef, { ...sec, cards: updatedCards });
-      } catch (e) {
-        alert("Errore eliminazione: " + e.message);
-      }
-    };
-
-    window.openManageAdminsModal = () => {
-      renderAdminsList();
-      openModal('manage-admins-modal');
-    };
-
-    function renderAdminsList() {
-      const listDiv = document.getElementById('admins-list');
-      if (!listDiv) return;
-      listDiv.innerHTML = '';
-      if (adminEmailsList.length === 0) {
-        listDiv.innerHTML = '<p style="font-size:0.8rem; color:var(--text-muted);">Nessun admin aggiuntivo.</p>';
-        return;
-      }
-      adminEmailsList.forEach(email => {
-        const item = document.createElement('div');
-        item.className = 'admin-list-item';
-        item.innerHTML = `
-          <span style="font-size:0.85rem;">${email}</span>
-          <button class="btn btn-danger" style="font-size:0.7rem; padding: 2px 6px;" onclick="revokeAdminRole('${email}')">Revoca</button>
-        `;
-        listDiv.appendChild(item);
-      });
-    }
-
-    window.addAdminRole = async () => {
-      const email = document.getElementById('new-admin-email').value.trim().toLowerCase();
-      if (!email) return;
-      try {
-        const adminDoc = window.doc(window.firebaseDb, "admins", email);
-        await window.setDoc(adminDoc, { role: "admin", grantedAt: new Date().toISOString() });
-        document.getElementById('new-admin-email').value = '';
-      } catch (e) {
-        alert("Errore aggiunta admin: " + e.message);
-      }
-    };
-
-    window.revokeAdminRole = async (email) => {
-      if (!confirm(`Revocare admin a ${email}?`)) return;
-      try {
-        const adminDoc = window.doc(window.firebaseDb, "admins", email);
-        await window.deleteDoc(adminDoc);
-      } catch (e) {
-        alert("Errore revoca: " + e.message);
-      }
-    };
-
-    window.addSection = async () => {
-      const title = document.getElementById('sec-title-input').value.trim();
-      const desc = document.getElementById('sec-desc-input').value.trim();
-      if (!title) return;
-      const secId = title.toLowerCase().replace(/\s+/g, '-');
-      const docRef = window.doc(window.firebaseDb, "sections", secId);
-      try {
-        await window.setDoc(docRef, { title, desc, cards: [] });
-        document.getElementById('sec-title-input').value = '';
-        document.getElementById('sec-desc-input').value = '';
-        closeModal('add-sec-modal');
-        activeSectionId =
+      const addSecBtn = document.getElementById
