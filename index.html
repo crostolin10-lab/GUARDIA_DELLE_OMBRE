@@ -13,30 +13,24 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // ⚠️ INCOLLA QUI LE TUE CHIAVI COPIATE DA FIREBASE
-    const firebaseConfig = {
-      apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
-      authDomain: "la-guardia-delle-ombre-adf24.firebaseapp.com",
-      projectId: "la-guardia-delle-ombre-adf24",
-      storageBucket: "la-guardia-delle-ombre-adf24.firebasestorage.app",
-      messagingSenderId: "152288534171",
-      appId: "1:152288534171:web:825689c6bb1972709d303e"
-    };
+     const firebaseConfig = {
+    apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
+    authDomain: "la-guardia-delle-ombre-adf24.firebaseapp.com",
+    projectId: "la-guardia-delle-ombre-adf24",
+    storageBucket: "la-guardia-delle-ombre-adf24.firebasestorage.app",
+    messagingSenderId: "152288534171",
+    appId: "1:152288534171:web:825689c6bb1972709d303e"
+  };
 
     // ⚠️ INSERISCI QUI LA TUA EMAIL PERSONALE (CREATORE)
     const CREATOR_EMAIL = "schena.g2010@gmail.com";
 
-    // Inizializzazione Firebase
-    let app, auth, db;
-    try {
-      app = initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db = getFirestore(app);
-    } catch (e) {
-      console.warn("Firebase non configurato.");
-    }
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     window.firebaseAuth = auth;
     window.firebaseDb = db;
@@ -45,11 +39,8 @@
     window.signOut = signOut;
     window.onAuthStateChanged = onAuthStateChanged;
     window.doc = doc;
-    window.getDoc = getDoc;
     window.setDoc = setDoc;
-    window.updateDoc = updateDoc;
     window.deleteDoc = deleteDoc;
-    window.addDoc = addDoc;
     window.collection = collection;
     window.getDocs = getDocs;
     window.onSnapshot = onSnapshot;
@@ -119,8 +110,12 @@
     }
 
     .btn:hover { background: var(--accent-hover); }
+    .btn-secondary { background: #334155; color: #fff; }
+    .btn-secondary:hover { background: #475569; }
     .btn-danger { background: #dc2626; color: #fff; }
     .btn-danger:hover { background: #ef4444; }
+    .btn-purple { background: #9333ea; color: #fff; }
+    .btn-purple:hover { background: #a855f7; }
 
     .app-container { display: flex; flex: 1; }
 
@@ -210,6 +205,12 @@
     .card-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
     .card-title { font-family: 'Cinzel', serif; color: var(--accent); margin: 0; font-size: 1.2rem; }
 
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
     .secret-box {
       background: var(--secret-bg);
       border: 1px dashed var(--secret-border);
@@ -255,6 +256,17 @@
     }
 
     .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+    .admin-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #000;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -272,6 +284,9 @@
       </button>
 
       <div id="user-info" style="display:none; align-items: center; gap: 0.75rem;">
+        <button id="manage-admins-btn" class="btn btn-purple" style="display:none;" onclick="openManageAdminsModal()">
+          <i class="fa-solid fa-user-gear"></i> Gestisci Admin
+        </button>
         <span id="user-display" style="color: var(--accent); font-weight: bold; font-size: 0.85rem;"></span>
         <button class="btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
       </div>
@@ -296,16 +311,46 @@
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <div>
-          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Benvenuto</h2>
-          <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;">Seleziona una sezione per esplorare l'enciclopedia.</p>
+          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Inizializzazione...</h2>
+          <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;"></p>
         </div>
-        <button id="add-card-btn" class="btn" style="display:none;" onclick="openModal('add-card-modal')">
-          <i class="fa-solid fa-square-plus"></i> Nuova Scheda
-        </button>
+        <div style="display:flex; gap:0.5rem;">
+          <button id="delete-sec-btn" class="btn btn-danger" style="display:none; padding: 0.4rem 0.8rem; font-size:0.8rem;" onclick="deleteActiveSection()">
+            <i class="fa-solid fa-trash"></i> Elimina Sezione
+          </button>
+          <button id="add-card-btn" class="btn" style="display:none;" onclick="openAddCardModal()">
+            <i class="fa-solid fa-square-plus"></i> Nuova Scheda
+          </button>
+        </div>
       </div>
 
       <div id="cards-grid" class="cards-grid"></div>
     </main>
+  </div>
+
+  <!-- MODALE CREATORE: GESTIONE ADMIN -->
+  <div id="manage-admins-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Gestione Permessi Amministratori</h3>
+      <p style="font-size:0.85rem; color: var(--text-muted);">Come Creatore puoi concedere o revocare i permessi di Admin.</p>
+      
+      <div class="form-group">
+        <label>Aggiungi Nuovo Admin (Email)</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="email" id="new-admin-email" placeholder="email@admin.com">
+          <button class="btn" onclick="addAdminRole()">Aggiungi</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Lista Amministratori Attivi</label>
+        <div id="admins-list"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('manage-admins-modal')">Chiudi</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODALE ADD SEZIONE -->
@@ -327,10 +372,11 @@
     </div>
   </div>
 
-  <!-- MODALE ADD SCHEDA -->
-  <div id="add-card-modal" class="modal">
+  <!-- MODALE SCHEDA (ADD / EDIT) -->
+  <div id="card-modal" class="modal">
     <div class="modal-content">
-      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Nuova Scheda</h3>
+      <h3 id="card-modal-title" style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Gestione Scheda</h3>
+      <input type="hidden" id="edit-card-index" value="-1">
       <div class="form-group">
         <label>Nome / Titolo</label>
         <input type="text" id="card-title-input">
@@ -348,8 +394,8 @@
         <textarea id="card-secret-input" rows="2"></textarea>
       </div>
       <div class="modal-actions">
-        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('add-card-modal')">Annulla</button>
-        <button class="btn" onclick="addCard()">Salva Scheda</button>
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('card-modal')">Annulla</button>
+        <button class="btn" onclick="saveCard()">Salva su Cloud</button>
       </div>
     </div>
   </div>
@@ -375,76 +421,125 @@
   </div>
 
   <script type="module">
-    let sectionsData = [
-      {
-        id: "personaggi",
+    let sectionsData = [];
+    let activeSectionId = null;
+    let currentUserRole = "visitor";
+    let currentUserEmail = "";
+    let adminEmailsList = [];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Ascolta la lista Admin da Firestore
+      if (window.firebaseDb) {
+        const adminsRef = window.collection(window.firebaseDb, "admins");
+        window.onSnapshot(adminsRef, (snapshot) => {
+          adminEmailsList = [];
+          snapshot.forEach(docSnap => adminEmailsList.push(docSnap.id.toLowerCase()));
+          checkUserRole();
+          renderAdminsList();
+        });
+      }
+
+      if (window.firebaseAuth) {
+        window.onAuthStateChanged(window.firebaseAuth, (user) => {
+          if (user) {
+            currentUserEmail = user.email.toLowerCase();
+          } else {
+            currentUserEmail = "";
+          }
+          checkUserRole();
+        });
+      }
+
+      if (window.firebaseDb) {
+        const sectionsRef = window.collection(window.firebaseDb, "sections");
+        window.onSnapshot(sectionsRef, (snapshot) => {
+          sectionsData = [];
+          snapshot.forEach((docSnap) => {
+            sectionsData.push({ id: docSnap.id, ...docSnap.data() });
+          });
+
+          if (sectionsData.length === 0) {
+            initializeDefaultData();
+          } else {
+            if (!activeSectionId && sectionsData.length > 0) {
+              activeSectionId = sectionsData[0].id;
+            }
+            renderSidebar();
+            renderActiveSection();
+          }
+        });
+      }
+    });
+
+    function checkUserRole() {
+      if (!currentUserEmail) {
+        currentUserRole = "visitor";
+      } else if (currentUserEmail === window.CREATOR_EMAIL.toLowerCase()) {
+        currentUserRole = "creator";
+      } else if (adminEmailsList.includes(currentUserEmail)) {
+        currentUserRole = "admin";
+      } else {
+        currentUserRole = "visitor";
+      }
+      updateUI();
+    }
+
+    async function initializeDefaultData() {
+      const defaultSecDoc = window.doc(window.firebaseDb, "sections", "personaggi");
+      const defaultData = {
         title: "Personaggi",
         desc: "I protagonisti, alleati e nemici incontrati durante le avventure.",
         cards: [
           {
             id: "c1",
             title: "Capitano Valerius",
-            desc: "Comandante della Guardia delle Ombre. Un veterano di molte battaglie, noto per la sua lealtà incondizionata al regno.",
+            desc: "Comandante della Guardia delle Ombre. Un veterano di molte battaglie, noto per la sua lealtà incondizionata.",
             secret: "Custodisce la mappa segreta delle catacombe dimenticate.",
             img: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500"
           }
         ]
+      };
+      try {
+        await window.setDoc(defaultSecDoc, defaultData);
+      } catch (e) {
+        console.error("Errore inizializzazione:", e);
       }
-    ];
-
-    let currentSectionIndex = 0;
-    let currentUserRole = "visitor";
-    let currentUserEmail = "";
-
-    window.addEventListener('DOMContentLoaded', () => {
-      renderSidebar();
-      selectSection(0);
-
-      if (window.firebaseAuth) {
-        window.onAuthStateChanged(window.firebaseAuth, async (user) => {
-          if (user) {
-            currentUserEmail = user.email;
-            if (user.email === window.CREATOR_EMAIL) {
-              currentUserRole = "creator";
-            } else {
-              currentUserRole = "admin";
-            }
-          } else {
-            currentUserRole = "visitor";
-            currentUserEmail = "";
-          }
-          updateUI();
-        });
-      }
-    });
+    }
 
     function renderSidebar() {
       const menu = document.getElementById('sections-menu');
       menu.innerHTML = '';
 
-      sectionsData.forEach((sec, idx) => {
+      sectionsData.forEach((sec) => {
         const li = document.createElement('li');
-        li.className = `menu-item ${idx === currentSectionIndex ? 'active' : ''}`;
+        li.className = `menu-item ${sec.id === activeSectionId ? 'active' : ''}`;
         li.innerText = sec.title;
-        li.onclick = () => selectSection(idx);
+        li.onclick = () => {
+          activeSectionId = sec.id;
+          renderSidebar();
+          renderActiveSection();
+        };
         menu.appendChild(li);
       });
     }
 
-    function selectSection(idx) {
-      currentSectionIndex = idx;
-      renderSidebar();
-
-      const sec = sectionsData[idx];
-      if (!sec) return;
+    function renderActiveSection() {
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec) {
+        document.getElementById('active-section-title').innerText = "Nessuna Sezione";
+        document.getElementById('active-section-desc').innerText = "";
+        document.getElementById('cards-grid').innerHTML = "";
+        return;
+      }
 
       document.getElementById('active-section-title').innerText = sec.title;
-      document.getElementById('active-section-desc').innerText = sec.desc;
+      document.getElementById('active-section-desc').innerText = sec.desc || '';
 
       const grid = document.getElementById('cards-grid');
       grid.innerHTML = '';
 
-      sec.cards.forEach((card, cardIdx) => {
+      const cards = sec.cards || [];
+      cards.forEach((card, cardIdx) => {
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card';
         cardDiv.innerHTML = `
@@ -452,109 +547,8 @@
           <div class="card-body">
             <h3 class="card-title">${card.title}</h3>
             <p style="margin:0; font-size:0.9rem; color: #cbd5e1; line-height:1.4;">${card.desc}</p>
-            ${currentUserRole !== 'visitor' ? `<div class="secret-box"><strong>🔒 Note Segrete:</strong> ${card.secret}</div>` : ''}
-            ${currentUserRole !== 'visitor' ? `<button class="btn btn-danger" style="margin-top:0.5rem; font-size:0.75rem; padding: 4px 8px;" onclick="deleteCard(${cardIdx})"><i class="fa-solid fa-trash"></i> Elimina</button>` : ''}
-          </div>
-        `;
-        grid.appendChild(cardDiv);
-      });
-    }
-
-    function updateUI() {
-      const loginBtn = document.getElementById('login-btn');
-      const userInfo = document.getElementById('user-info');
-      const userDisplay = document.getElementById('user-display');
-      const roleBanner = document.getElementById('role-banner');
-      const addSecBtn = document.getElementById('add-sec-btn');
-      const addCardBtn = document.getElementById('add-card-btn');
-
-      if (currentUserRole !== "visitor") {
-        loginBtn.style.display = 'none';
-        userInfo.style.display = 'flex';
-        userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
-
-        roleBanner.className = `status-banner ${currentUserRole}`;
-        roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Modalità <strong>${currentUserRole.toUpperCase()}</strong> attiva. Ora puoi modificare il mondo!`;
-        roleBanner.style.display = 'flex';
-
-        addSecBtn.style.display = 'inline-flex';
-        addCardBtn.style.display = 'inline-flex';
-      } else {
-        loginBtn.style.display = 'inline-flex';
-        userInfo.style.display = 'none';
-        roleBanner.style.display = 'none';
-        addSecBtn.style.display = 'none';
-        addCardBtn.style.display = 'none';
-      }
-
-      selectSection(currentSectionIndex);
-    }
-
-    window.addSection = () => {
-      const title = document.getElementById('sec-title-input').value;
-      const desc = document.getElementById('sec-desc-input').value;
-      if (!title) return;
-
-      sectionsData.push({ id: title.toLowerCase().replace(/\s+/g, '-'), title, desc, cards: [] });
-      document.getElementById('sec-title-input').value = '';
-      document.getElementById('sec-desc-input').value = '';
-      closeModal('add-sec-modal');
-      selectSection(sectionsData.length - 1);
-    };
-
-    window.addCard = () => {
-      const title = document.getElementById('card-title-input').value;
-      const img = document.getElementById('card-img-input').value;
-      const desc = document.getElementById('card-desc-input').value;
-      const secret = document.getElementById('card-secret-input').value;
-
-      if (!title) return;
-
-      sectionsData[currentSectionIndex].cards.push({
-        id: Date.now().toString(),
-        title,
-        img,
-        desc,
-        secret
-      });
-
-      document.getElementById('card-title-input').value = '';
-      document.getElementById('card-img-input').value = '';
-      document.getElementById('card-desc-input').value = '';
-      document.getElementById('card-secret-input').value = '';
-
-      closeModal('add-card-modal');
-      selectSection(currentSectionIndex);
-    };
-
-    window.deleteCard = (cardIdx) => {
-      if (confirm("Vuoi davvero eliminare questa scheda?")) {
-        sectionsData[currentSectionIndex].cards.splice(cardIdx, 1);
-        selectSection(currentSectionIndex);
-      }
-    };
-
-    window.handleLogin = async () => {
-      const email = document.getElementById('login-email').value;
-      const pass = document.getElementById('login-password').value;
-      const err = document.getElementById('login-error');
-
-      try {
-        await window.signInWithEmailAndPassword(window.firebaseAuth, email, pass);
-        window.closeModal('login-modal');
-        err.style.display = 'none';
-      } catch (e) {
-        err.innerText = "Credenziali errate o utente non trovato.";
-        err.style.display = 'block';
-      }
-    };
-
-    window.handleLogout = async () => {
-      if (window.firebaseAuth) await window.signOut(window.firebaseAuth);
-    };
-
-    window.openModal = (id) => document.getElementById(id).style.display = 'flex';
-    window.closeModal = (id) => document.getElementById(id).style.display = 'none';
-  </script>
-</body>
-</html>
+            ${currentUserRole !== 'visitor' && card.secret ? `<div class="secret-box"><strong>🔒 Note Segrete:</strong> ${card.secret}</div>` : ''}
+            ${currentUserRole !== 'visitor' ? `
+              <div class="card-actions">
+                <button class="btn btn-secondary" style="font-size:0.75rem; padding: 4px 8px;" onclick="openEditCardModal(${cardIdx})"><i class="fa-solid fa-pen"></i> Modifica</button>
+                <button class="btn btn-danger" style="font-size:0.
