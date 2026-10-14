@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Guardia delle Ombre - Enciclopedia Fantasy</title>
+  
+  <!-- Font Google & FontAwesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase SDK Modules -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ⚠️ INCOLLA QUI LE TUE CHIAVI COPIATE DA FIREBASE
+    const firebaseConfig = {
+  apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
+  authDomain: "la-guardia-delle-ombre-adf24.firebaseapp.com",
+  projectId: "la-guardia-delle-ombre-adf24",
+  storageBucket: "la-guardia-delle-ombre-adf24.firebasestorage.app",
+  messagingSenderId: "152288534171",
+  appId: "1:152288534171:web:825689c6bb1972709d303e"
+    };
+
+    // ⚠️ INSERISCI QUI LA TUA EMAIL PERSONALE (CREATORE)
+    const CREATOR_EMAIL = "schena.g2010@gmail.com";
+
+    // Inizializzazione Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.CREATOR_EMAIL = CREATOR_EMAIL;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.signOut = signOut;
+    window.onAuthStateChanged = onAuthStateChanged;
+    window.doc = doc;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+    window.updateDoc = updateDoc;
+    window.deleteDoc = deleteDoc;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.onSnapshot = onSnapshot;
+  </script>
+
+  <style>
+    :root {
+      --bg-main: #090a0f;
+      --bg-card: #131620;
+      --bg-sidebar: #0f111a;
+      --accent: #d4af37;
+      --accent-hover: #f3e5ab;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border: #2a2f42;
+      --admin-badge: #ef4444;
+      --creator-badge: #9333ea;
+      --secret-bg: rgba(239, 68, 68, 0.08);
+      --secret-border: #7f1d1d;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg-main);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand { display: flex; align-items: center; gap: 1rem; }
+
+    h1.title {
+      font-family: 'Cinzel', serif;
+      color: var(--accent);
+      margin: 0;
+      font-size: 1.8rem;
+      letter-spacing: 1px;
+    }
+
+    .search-box { position: relative; width: 280px; }
+    .search-box input {
+      width: 100%;
+      padding: 0.5rem 1rem 0.5rem 2.2rem;
+      background: #000;
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 20px;
+      outline: none;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .btn:hover { background: var(--accent-hover); }
+    .btn-creator { background: var(--creator-badge); color: #fff; }
+    .btn-creator:hover { background: #a855f7; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #ef4444; }
+
+    .app-container { display: flex; flex: 1; }
+
+    aside.sidebar {
+      width: 280px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .sidebar-section-title {
+      font-family: 'Cinzel', serif;
+      color: var(--accent);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-list { list-style: none; padding: 0; margin: 0; }
+
+    .menu-item {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .menu-item:hover, .menu-item.active {
+      background: rgba(212, 175, 55, 0.1);
+      color: var(--accent);
+    }
+
+    main.content { flex: 1; padding: 2rem; overflow-y: auto; }
+
+    .status-banner {
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .status-banner.admin {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--admin-badge);
+      color: #fca5a5;
+    }
+
+    .status-banner.creator {
+      background: rgba(147, 51, 234, 0.1);
+      border: 1px solid var(--creator-badge);
+      color: #d8b4fe;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .card-img { height: 180px; width: 100%; object-fit: cover; background: #000; }
+    .card-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
+    .card-title { font-family: 'Cinzel', serif; color: var(--accent); margin: 0; font-size: 1.2rem; }
+
+    .secret-box {
+      background: var(--secret-bg);
+      border: 1px dashed var(--secret-border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #fca5a5;
+      margin-top: auto;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      padding: 1.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      width: 100%;
+      max-width: 550px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--accent); font-size: 0.85rem; }
+
+    input[type="text"], input[type="email"], input[type="password"], textarea {
+      width: 100%;
+      padding: 0.65rem;
+      background: #000;
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <i class="fa-solid fa-shield-halved" style="color: var(--accent); font-size: 1.6rem;"></i>
+      <h1 class="title">La Guardia delle Ombre</h1>
+    </div>
+
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="global-search" placeholder="Cerca nel mondo..." oninput="handleSearch()">
+    </div>
+
+    <div id="auth-actions">
+      <button id="login-btn" class="btn" onclick="openModal('login-modal')">
+        <i class="fa-solid fa-key"></i> Accesso Admin
+      </button>
+
+      <div id="user-info" style="display:none; align-items: center; gap: 0.75rem;">
+        <span id="user-display" style="color: var(--accent); font-weight: bold; font-size: 0.85rem;"></span>
+        
+        <button id="creator-panel-btn" class="btn btn-creator" style="display:none;" onclick="openCreatorPanel()">
+          <i class="fa-solid fa-crown"></i> Pannello Creatore
+        </button>
+
+        <button class="btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-section-title">
+          <span>Sezioni del Mondo</span>
+          <button id="add-section-btn" class="btn" style="padding: 2px 6px; font-size: 0.75rem; display:none;" onclick="openAddSectionModal()">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+        <ul id="sections-menu" class="menu-list"></ul>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div id="role-banner" style="display:none;"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Caricamento...</h2>
+          <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;"></p>
+        </div>
+        <button id="add-card-btn" class="btn" style="display:none;" onclick="openAddCardModal()">
+          <i class="fa-solid fa-square-plus"></i> Nuova Scheda
+        </button>
+      </div>
+
+      <div id="cards-grid" class="cards-grid"></div>
+    </main>
+  </div>
+
+  <!-- MODALE LOGIN -->
+  <div id="login-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Accesso Amministratore</h3>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="es. tua-email@esempio.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••">
+      </div>
+      <div id="login-error" style="color: #ef4444; font-size: 0.85rem; display:none; margin-bottom: 1rem;"></div>
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('login-modal')">Annulla</button>
+        <button class="btn" onclick="handleLogin()">Accedi</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    let currentUserRole = "visitor";
+    let currentUserEmail = "";
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const auth = window.firebaseAuth;
+
+      window.onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          currentUserEmail = user.email;
+          if (user.email === window.CREATOR_EMAIL) {
+            currentUserRole = "creator";
+          } else {
+            const userDoc = await window.getDoc(window.doc(window.firebaseDb, "users", user.uid));
+            if (userDoc.exists() && userDoc.data().role === "admin") {
+              currentUserRole = "admin";
+            } else {
+              currentUserRole = "visitor";
+            }
+          }
+        } else {
+          currentUserRole = "visitor";
+          currentUserEmail = "";
+        }
+        updateUI();
+      });
+    });
+
+    function updateUI() {
+      const loginBtn = document.getElementById('login-btn');
+      const userInfo = document.getElementById('user-info');
+      const userDisplay = document.getElementById('user-display');
+      const creatorBtn = document.getElementById('creator-panel-btn');
+      const roleBanner = document.getElementById('role-banner');
+
+      if (currentUserRole !== "visitor") {
+        loginBtn.style.display = 'none';
+        userInfo.style.display = 'flex';
+        userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
+
+        if (currentUserRole === "creator") {
+          creatorBtn.style.display = 'inline-flex';
+          roleBanner.className = 'status-banner creator';
+          roleBanner.innerHTML = `<i class="fa-solid fa-crown"></i> Account <strong>CREATORE</strong> attivo.`;
+          roleBanner.style.display = 'flex';
+        } else {
+          roleBanner.className = 'status-banner admin';
+          roleBanner.innerHTML = `<i class="fa-solid fa-user-shield"></i> Account <strong>ADMIN</strong> attivo.`;
+          roleBanner.style.display = 'flex';
+        }
+      } else {
+        loginBtn.style.display = 'inline-flex';
+        userInfo.style.display = 'none';
+        roleBanner.style.display = 'none';
+      }
+    }
+
+    window.handleLogin = async () => {
+      const email = document.getElementById('login-email').value;
+      const pass = document.getElementById('login-password').value;
+      const err = document.getElementById('login-error');
+
+      try {
+        await window.signInWithEmailAndPassword(window.firebaseAuth, email, pass);
+        window.closeModal('login-modal');
+        err.style.display = 'none';
+      } catch (e) {
+        err.innerText = "Credenziali errate: " + e.message;
+        err.style.display = 'block';
+      }
+    };
+
+    window.handleLogout = async () => {
+      await window.signOut(window.firebaseAuth);
+    };
+
+    window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+    window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+  </script>
+</body>
+</html>
