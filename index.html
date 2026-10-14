@@ -34,7 +34,7 @@
       auth = getAuth(app);
       db = getFirestore(app);
     } catch (e) {
-      console.warn("Firebase non inizializzato correttamente:", e);
+      console.warn("Firebase non inizializzato:", e);
     }
 
     window.firebaseAuth = auth;
@@ -342,12 +342,13 @@
     </div>
 
     <div id="auth-actions">
-      <button id="login-btn" class="btn" onclick="openModal('login-modal')">
+      <!-- Pulsante diretto che attiva il login nativo -->
+      <button id="login-btn" class="btn" onclick="triggerNativeLogin()">
         <i class="fa-solid fa-key"></i> Accesso Admin
       </button>
 
       <div id="user-info" style="display:none; align-items: center; gap: 0.75rem;">
-        <button id="manage-admins-btn" class="btn btn-purple" style="display:none;" onclick="openManageAdminsModal()">
+        <button id="manage-admins-btn" class="btn btn-purple" style="display:none;" onclick="openModal('manage-admins-modal')">
           <i class="fa-solid fa-user-gear"></i> Gestisci Admin
         </button>
         <span id="user-display" style="color: var(--accent); font-weight: bold; font-size: 0.85rem;"></span>
@@ -454,10 +455,9 @@
         <textarea id="card-desc-input" rows="3"></textarea>
       </div>
 
-      <!-- SEZIONE CAMPI / FINESTRE EXTRA -->
       <div class="form-group">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <label style="margin:0;">Finestre / Campi Extra (es. Abilità, Storia, Equipaggiamento)</label>
+          <label style="margin:0;">Finestre / Campi Extra</label>
           <button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="addExtraFieldInput('', '')">
             <i class="fa-solid fa-plus"></i> Aggiungi Campo
           </button>
@@ -477,40 +477,7 @@
     </div>
   </div>
 
-  <!-- MODALE LOGIN -->
-  <div id="login-modal" class="modal">
-    <div class="modal-content">
-      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Accesso Amministratore</h3>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="login-email" placeholder="tua-email@esempio.com">
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="login-password" placeholder="••••••••">
-      </div>
-      <div id="login-error" style="color: #ef4444; font-size: 0.85rem; display:none; margin-bottom: 1rem;"></div>
-      <div class="modal-actions">
-        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('login-modal')">Annulla</button>
-        <button class="btn" onclick="handleLogin()">Accedi</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SCRIPT GLOBALE E FUNZIONI MODALE -->
-  <script>
-    // Dichiarazione globale immediata per evitare qualsiasi blocco di caricamento
-    window.openModal = function(id) {
-      const modal = document.getElementById(id);
-      if (modal) modal.style.display = 'flex';
-    };
-
-    window.closeModal = function(id) {
-      const modal = document.getElementById(id);
-      if (modal) modal.style.display = 'none';
-    };
-  </script>
-
+  <!-- SCRIPT DI LOGICA E FIREBASE -->
   <script type="module">
     let sectionsData = [];
     let activeSectionId = null;
@@ -559,6 +526,21 @@
         });
       }
     });
+
+    // Funzione di Login Nativo (indipendente da modali HTML bloccate)
+    window.triggerNativeLogin = async () => {
+      const email = prompt("Inserisci la tua email Admin:");
+      if (!email) return;
+      const password = prompt("Inserisci la password:");
+      if (!password) return;
+
+      try {
+        await window.signInWithEmailAndPassword(window.firebaseAuth, email.trim(), password);
+        alert("Accesso effettuato con successo!");
+      } catch (e) {
+        alert("Errore di accesso: " + e.message);
+      }
+    };
 
     function checkUserRole() {
       if (!currentUserEmail) {
@@ -681,4 +663,235 @@
       const userInfo = document.getElementById('user-info');
       const userDisplay = document.getElementById('user-display');
       const roleBanner = document.getElementById('role-banner');
-      const addSecBtn = document.getElementById
+      const addSecBtn = document.getElementById('add-sec-btn');
+      const delSecBtn = document.getElementById('delete-sec-btn');
+      const addCardBtn = document.getElementById('add-card-btn');
+      const manageAdminsBtn = document.getElementById('manage-admins-btn');
+
+      if (currentUserRole !== "visitor") {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (userInfo) userInfo.style.display = 'flex';
+        if (userDisplay) userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
+
+        if (roleBanner) {
+          roleBanner.className = `status-banner ${currentUserRole}`;
+          roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Accesso <strong>${currentUserRole.toUpperCase()}</strong> attivo.`;
+          roleBanner.style.display = 'flex';
+        }
+
+        if (addSecBtn) addSecBtn.style.display = 'inline-flex';
+        if (delSecBtn) delSecBtn.style.display = 'inline-flex';
+        if (addCardBtn) addCardBtn.style.display = 'inline-flex';
+        if (manageAdminsBtn) manageAdminsBtn.style.display = (currentUserRole === 'creator') ? 'inline-flex' : 'none';
+      } else {
+        if (loginBtn) loginBtn.style.display = 'inline-flex';
+        if (userInfo) userInfo.style.display = 'none';
+        if (roleBanner) roleBanner.style.display = 'none';
+        if (addSecBtn) addSecBtn.style.display = 'none';
+        if (delSecBtn) delSecBtn.style.display = 'none';
+        if (addCardBtn) addCardBtn.style.display = 'none';
+        if (manageAdminsBtn) manageAdminsBtn.style.display = 'none';
+      }
+
+      renderActiveSection();
+    }
+
+    window.openModal = (id) => {
+      const modal = document.getElementById(id);
+      if (modal) modal.style.display = 'flex';
+    };
+
+    window.closeModal = (id) => {
+      const modal = document.getElementById(id);
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.addExtraFieldInput = (label = '', value = '') => {
+      const container = document.getElementById('extra-fields-inputs-container');
+      if (!container) return;
+      const row = document.createElement('div');
+      row.className = 'dynamic-field-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Etichetta (es. Abilità)" value="${label}" style="flex: 1;" class="ef-label">
+        <input type="text" placeholder="Valore / Descrizione" value="${value}" style="flex: 2;" class="ef-value">
+        <button type="button" class="btn btn-danger" style="padding: 6px 10px;" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+      `;
+      container.appendChild(row);
+    };
+
+    window.openAddCardModal = () => {
+      document.getElementById('card-modal-title').innerText = "Nuova Scheda";
+      document.getElementById('edit-card-index').value = "-1";
+      document.getElementById('card-title-input').value = '';
+      document.getElementById('card-img-input').value = '';
+      document.getElementById('card-desc-input').value = '';
+      document.getElementById('card-secret-input').value = '';
+      document.getElementById('extra-fields-inputs-container').innerHTML = '';
+      openModal('card-modal');
+    };
+
+    window.openEditCardModal = (cardIdx) => {
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec || !sec.cards[cardIdx]) return;
+
+      const card = sec.cards[cardIdx];
+      document.getElementById('card-modal-title').innerText = "Modifica Scheda";
+      document.getElementById('edit-card-index').value = cardIdx;
+      document.getElementById('card-title-input').value = card.title || '';
+      document.getElementById('card-img-input').value = card.img || '';
+      document.getElementById('card-desc-input').value = card.desc || '';
+      document.getElementById('card-secret-input').value = card.secret || '';
+
+      const container = document.getElementById('extra-fields-inputs-container');
+      if (container) {
+        container.innerHTML = '';
+        if (card.extraFields && Array.isArray(card.extraFields)) {
+          card.extraFields.forEach(ef => {
+            window.addExtraFieldInput(ef.label, ef.value);
+          });
+        }
+      }
+
+      openModal('card-modal');
+    };
+
+    window.saveCard = async () => {
+      const idx = parseInt(document.getElementById('edit-card-index').value);
+      const title = document.getElementById('card-title-input').value.trim();
+      const img = document.getElementById('card-img-input').value.trim();
+      const desc = document.getElementById('card-desc-input').value.trim();
+      const secret = document.getElementById('card-secret-input').value.trim();
+
+      const extraFields = [];
+      const rows = document.querySelectorAll('#extra-fields-inputs-container .dynamic-field-row');
+      rows.forEach(row => {
+        const label = row.querySelector('.ef-label').value.trim();
+        const value = row.querySelector('.ef-value').value.trim();
+        if (label || value) {
+          extraFields.push({ label, value });
+        }
+      });
+
+      if (!title || !activeSectionId) return;
+
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec) return;
+
+      const updatedCards = [...(sec.cards || [])];
+      const cardData = {
+        id: idx >= 0 ? updatedCards[idx].id : Date.now().toString(),
+        title,
+        img,
+        desc,
+        extraFields,
+        secret
+      };
+
+      if (idx >= 0) {
+        updatedCards[idx] = cardData;
+      } else {
+        updatedCards.push(cardData);
+      }
+
+      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
+      try {
+        await window.setDoc(docRef, { ...sec, cards: updatedCards });
+        closeModal('card-modal');
+      } catch (e) {
+        alert("Errore salvataggio: " + e.message);
+      }
+    };
+
+    window.deleteCard = async (cardIdx) => {
+      if (!confirm("Vuoi davvero eliminare questa scheda?")) return;
+
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec) return;
+
+      const updatedCards = [...(sec.cards || [])];
+      updatedCards.splice(cardIdx, 1);
+
+      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
+      try {
+        await window.setDoc(docRef, { ...sec, cards: updatedCards });
+      } catch (e) {
+        alert("Errore eliminazione: " + e.message);
+      }
+    };
+
+    function renderAdminsList() {
+      const listDiv = document.getElementById('admins-list');
+      if (!listDiv) return;
+      listDiv.innerHTML = '';
+      if (adminEmailsList.length === 0) {
+        listDiv.innerHTML = '<p style="font-size:0.8rem; color:var(--text-muted);">Nessun admin aggiuntivo.</p>';
+        return;
+      }
+      adminEmailsList.forEach(email => {
+        const item = document.createElement('div');
+        item.className = 'admin-list-item';
+        item.innerHTML = `
+          <span style="font-size:0.85rem;">${email}</span>
+          <button class="btn btn-danger" style="font-size:0.7rem; padding: 2px 6px;" onclick="revokeAdminRole('${email}')">Revoca</button>
+        `;
+        listDiv.appendChild(item);
+      });
+    }
+
+    window.addAdminRole = async () => {
+      const email = document.getElementById('new-admin-email').value.trim().toLowerCase();
+      if (!email) return;
+      try {
+        const adminDoc = window.doc(window.firebaseDb, "admins", email);
+        await window.setDoc(adminDoc, { role: "admin", grantedAt: new Date().toISOString() });
+        document.getElementById('new-admin-email').value = '';
+      } catch (e) {
+        alert("Errore aggiunta admin: " + e.message);
+      }
+    };
+
+    window.revokeAdminRole = async (email) => {
+      if (!confirm(`Revocare admin a ${email}?`)) return;
+      try {
+        const adminDoc = window.doc(window.firebaseDb, "admins", email);
+        await window.deleteDoc(adminDoc);
+      } catch (e) {
+        alert("Errore revoca: " + e.message);
+      }
+    };
+
+    window.addSection = async () => {
+      const title = document.getElementById('sec-title-input').value.trim();
+      const desc = document.getElementById('sec-desc-input').value.trim();
+      if (!title) return;
+      const secId = title.toLowerCase().replace(/\s+/g, '-');
+      const docRef = window.doc(window.firebaseDb, "sections", secId);
+      try {
+        await window.setDoc(docRef, { title, desc, cards: [] });
+        document.getElementById('sec-title-input').value = '';
+        document.getElementById('sec-desc-input').value = '';
+        closeModal('add-sec-modal');
+        activeSectionId = secId;
+      } catch (e) {
+        alert("Errore sezione: " + e.message);
+      }
+    };
+
+    window.deleteActiveSection = async () => {
+      if (!activeSectionId) return;
+      if (!confirm("Eliminare interamente questa sezione?")) return;
+      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
+      try {
+        await window.deleteDoc(docRef);
+        activeSectionId = sectionsData.length > 1 ? sectionsData.find(s => s.id !== activeSectionId)?.id : null;
+      } catch (e) {
+        alert("Errore eliminazione: " + e.message);
+      }
+    };
+
+    window.handleLogout = async () => {
+      if (window.firebaseAuth) await window.signOut(window.firebaseAuth);
+    };
+  </script>
+</body>
+</html>
