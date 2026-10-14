@@ -13,7 +13,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // ⚠️ INCOLLA QUI LE TUE CHIAVI COPIATE DA FIREBASE
     const firebaseConfig = {
@@ -35,7 +35,7 @@
       auth = getAuth(app);
       db = getFirestore(app);
     } catch (e) {
-      console.warn("Firebase non ancora configurato correttamente. Funzionamento in modalità Demo locale.");
+      console.warn("Firebase non configurato.");
     }
 
     window.firebaseAuth = auth;
@@ -49,6 +49,7 @@
     window.setDoc = setDoc;
     window.updateDoc = updateDoc;
     window.deleteDoc = deleteDoc;
+    window.addDoc = addDoc;
     window.collection = collection;
     window.getDocs = getDocs;
     window.onSnapshot = onSnapshot;
@@ -103,25 +104,6 @@
       letter-spacing: 1px;
     }
 
-    .search-box { position: relative; width: 280px; }
-    .search-box input {
-      width: 100%;
-      padding: 0.5rem 1rem 0.5rem 2.2rem;
-      background: #000;
-      border: 1px solid var(--border);
-      color: #fff;
-      border-radius: 20px;
-      outline: none;
-    }
-
-    .search-box i {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-    }
-
     .btn {
       background: var(--accent);
       color: #000;
@@ -137,6 +119,8 @@
     }
 
     .btn:hover { background: var(--accent-hover); }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #ef4444; }
 
     .app-container { display: flex; flex: 1; }
 
@@ -259,7 +243,7 @@
     .form-group { margin-bottom: 1.25rem; }
     .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--accent); font-size: 0.85rem; }
 
-    input[type="text"], input[type="email"], input[type="password"] {
+    input[type="text"], input[type="email"], input[type="password"], textarea {
       width: 100%;
       padding: 0.65rem;
       background: #000;
@@ -267,6 +251,7 @@
       color: #fff;
       border-radius: 4px;
       box-sizing: border-box;
+      font-family: inherit;
     }
 
     .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
@@ -279,11 +264,6 @@
     <div class="brand">
       <i class="fa-solid fa-shield-halved" style="color: var(--accent); font-size: 1.6rem;"></i>
       <h1 class="title">La Guardia delle Ombre</h1>
-    </div>
-
-    <div class="search-box">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" id="global-search" placeholder="Cerca nel mondo..." oninput="handleSearch()">
     </div>
 
     <div id="auth-actions">
@@ -303,6 +283,9 @@
       <div>
         <div class="sidebar-section-title">
           <span>Sezioni del Mondo</span>
+          <button id="add-sec-btn" class="btn" style="padding: 2px 6px; font-size: 0.75rem; display:none;" onclick="openModal('add-sec-modal')">
+            <i class="fa-solid fa-plus"></i>
+          </button>
         </div>
         <ul id="sections-menu" class="menu-list"></ul>
       </div>
@@ -316,10 +299,59 @@
           <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Benvenuto</h2>
           <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;">Seleziona una sezione per esplorare l'enciclopedia.</p>
         </div>
+        <button id="add-card-btn" class="btn" style="display:none;" onclick="openModal('add-card-modal')">
+          <i class="fa-solid fa-square-plus"></i> Nuova Scheda
+        </button>
       </div>
 
       <div id="cards-grid" class="cards-grid"></div>
     </main>
+  </div>
+
+  <!-- MODALE ADD SEZIONE -->
+  <div id="add-sec-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Nuova Sezione</h3>
+      <div class="form-group">
+        <label>Titolo Sezione (es. Personaggi, Luoghi)</label>
+        <input type="text" id="sec-title-input">
+      </div>
+      <div class="form-group">
+        <label>Descrizione Breve</label>
+        <input type="text" id="sec-desc-input">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('add-sec-modal')">Annulla</button>
+        <button class="btn" onclick="addSection()">Crea Sezione</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE ADD SCHEDA -->
+  <div id="add-card-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Nuova Scheda</h3>
+      <div class="form-group">
+        <label>Nome / Titolo</label>
+        <input type="text" id="card-title-input">
+      </div>
+      <div class="form-group">
+        <label>URL Immagine</label>
+        <input type="text" id="card-img-input" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>Descrizione Pubblica</label>
+        <textarea id="card-desc-input" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>🔒 Note Segrete (Visibili solo ad Admin e Creatore)</label>
+        <textarea id="card-secret-input" rows="2"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('add-card-modal')">Annulla</button>
+        <button class="btn" onclick="addCard()">Salva Scheda</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODALE LOGIN -->
@@ -328,11 +360,11 @@
       <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Accesso Amministratore</h3>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="login-email" placeholder="es. tua-email@esempio.com">
+        <input type="email" id="login-email">
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="login-password" placeholder="••••••••">
+        <input type="password" id="login-password">
       </div>
       <div id="login-error" style="color: #ef4444; font-size: 0.85rem; display:none; margin-bottom: 1rem;"></div>
       <div class="modal-actions">
@@ -343,50 +375,18 @@
   </div>
 
   <script type="module">
-    // DATI DEMO DI ESEMPIO (Mostrati se il database è vuoto o in fase di caricamento)
-    const demoData = [
+    let sectionsData = [
       {
         id: "personaggi",
         title: "Personaggi",
         desc: "I protagonisti, alleati e nemici incontrati durante le avventure.",
         cards: [
           {
+            id: "c1",
             title: "Capitano Valerius",
             desc: "Comandante della Guardia delle Ombre. Un veterano di molte battaglie, noto per la sua lealtà incondizionata al regno.",
             secret: "Custodisce la mappa segreta delle catacombe dimenticate.",
             img: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500"
-          },
-          {
-            title: "Eldrin l'Eremita",
-            desc: "Saggio e incantatore che vive nei boschi sussurranti a nord della capitale.",
-            secret: "È l'ultimo a conoscere la formula per il veleno di Drago.",
-            img: "https://images.unsplash.com/photo-1514539079130-25950c84af65?w=500"
-          }
-        ]
-      },
-      {
-        id: "luoghi",
-        title: "Luoghi",
-        desc: "Città, fortezze e rovine antiche del mondo.",
-        cards: [
-          {
-            title: "Fortezza di Roccanera",
-            desc: "La sede principale dell'ordine della Guardia. Inespugnabile da oltre tre secoli.",
-            secret: "Esiste un passaggio segreto che porta direttamente al mare sotto la scogliera.",
-            img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500"
-          }
-        ]
-      },
-      {
-        id: "fazioni",
-        title: "Fazioni",
-        desc: "Gilde, ordini cavallereschi e associazioni segrete.",
-        cards: [
-          {
-            title: "I Corvi della Notte",
-            desc: "Un'organizzazione di spie e assassini che opera nell'ombra della capitale.",
-            secret: "Il loro leader risponde al nome di 'Ombra Silenziosa'.",
-            img: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500"
           }
         ]
       }
@@ -422,7 +422,7 @@
       const menu = document.getElementById('sections-menu');
       menu.innerHTML = '';
 
-      demoData.forEach((sec, idx) => {
+      sectionsData.forEach((sec, idx) => {
         const li = document.createElement('li');
         li.className = `menu-item ${idx === currentSectionIndex ? 'active' : ''}`;
         li.innerText = sec.title;
@@ -435,22 +435,25 @@
       currentSectionIndex = idx;
       renderSidebar();
 
-      const sec = demoData[idx];
+      const sec = sectionsData[idx];
+      if (!sec) return;
+
       document.getElementById('active-section-title').innerText = sec.title;
       document.getElementById('active-section-desc').innerText = sec.desc;
 
       const grid = document.getElementById('cards-grid');
       grid.innerHTML = '';
 
-      sec.cards.forEach(card => {
+      sec.cards.forEach((card, cardIdx) => {
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card';
         cardDiv.innerHTML = `
-          <img src="${card.img}" class="card-img" alt="${card.title}">
+          <img src="${card.img || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500'}" class="card-img" alt="${card.title}">
           <div class="card-body">
             <h3 class="card-title">${card.title}</h3>
             <p style="margin:0; font-size:0.9rem; color: #cbd5e1; line-height:1.4;">${card.desc}</p>
             ${currentUserRole !== 'visitor' ? `<div class="secret-box"><strong>🔒 Note Segrete:</strong> ${card.secret}</div>` : ''}
+            ${currentUserRole !== 'visitor' ? `<button class="btn btn-danger" style="margin-top:0.5rem; font-size:0.75rem; padding: 4px 8px;" onclick="deleteCard(${cardIdx})"><i class="fa-solid fa-trash"></i> Elimina</button>` : ''}
           </div>
         `;
         grid.appendChild(cardDiv);
@@ -462,6 +465,8 @@
       const userInfo = document.getElementById('user-info');
       const userDisplay = document.getElementById('user-display');
       const roleBanner = document.getElementById('role-banner');
+      const addSecBtn = document.getElementById('add-sec-btn');
+      const addCardBtn = document.getElementById('add-card-btn');
 
       if (currentUserRole !== "visitor") {
         loginBtn.style.display = 'none';
@@ -469,16 +474,65 @@
         userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
 
         roleBanner.className = `status-banner ${currentUserRole}`;
-        roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Modalità <strong>${currentUserRole.toUpperCase()}</strong> attiva. Ora puoi visualizzare anche le note segrete!`;
+        roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Modalità <strong>${currentUserRole.toUpperCase()}</strong> attiva. Ora puoi modificare il mondo!`;
         roleBanner.style.display = 'flex';
+
+        addSecBtn.style.display = 'inline-flex';
+        addCardBtn.style.display = 'inline-flex';
       } else {
         loginBtn.style.display = 'inline-flex';
         userInfo.style.display = 'none';
         roleBanner.style.display = 'none';
+        addSecBtn.style.display = 'none';
+        addCardBtn.style.display = 'none';
       }
 
       selectSection(currentSectionIndex);
     }
+
+    window.addSection = () => {
+      const title = document.getElementById('sec-title-input').value;
+      const desc = document.getElementById('sec-desc-input').value;
+      if (!title) return;
+
+      sectionsData.push({ id: title.toLowerCase().replace(/\s+/g, '-'), title, desc, cards: [] });
+      document.getElementById('sec-title-input').value = '';
+      document.getElementById('sec-desc-input').value = '';
+      closeModal('add-sec-modal');
+      selectSection(sectionsData.length - 1);
+    };
+
+    window.addCard = () => {
+      const title = document.getElementById('card-title-input').value;
+      const img = document.getElementById('card-img-input').value;
+      const desc = document.getElementById('card-desc-input').value;
+      const secret = document.getElementById('card-secret-input').value;
+
+      if (!title) return;
+
+      sectionsData[currentSectionIndex].cards.push({
+        id: Date.now().toString(),
+        title,
+        img,
+        desc,
+        secret
+      });
+
+      document.getElementById('card-title-input').value = '';
+      document.getElementById('card-img-input').value = '';
+      document.getElementById('card-desc-input').value = '';
+      document.getElementById('card-secret-input').value = '';
+
+      closeModal('add-card-modal');
+      selectSection(currentSectionIndex);
+    };
+
+    window.deleteCard = (cardIdx) => {
+      if (confirm("Vuoi davvero eliminare questa scheda?")) {
+        sectionsData[currentSectionIndex].cards.splice(cardIdx, 1);
+        selectSection(currentSectionIndex);
+      }
+    };
 
     window.handleLogin = async () => {
       const email = document.getElementById('login-email').value;
