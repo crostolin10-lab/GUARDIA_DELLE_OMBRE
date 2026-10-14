@@ -16,14 +16,14 @@
     import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // ⚠️ INCOLLA QUI LE TUE CHIAVI COPIATE DA FIREBASE
-     const firebaseConfig = {
-    apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
-    authDomain: "la-guardia-delle-ombre-adf24.firebaseapp.com",
-    projectId: "la-guardia-delle-ombre-adf24",
-    storageBucket: "la-guardia-delle-ombre-adf24.firebasestorage.app",
-    messagingSenderId: "152288534171",
-    appId: "1:152288534171:web:825689c6bb1972709d303e"
-  };
+    const firebaseConfig = {
+        apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
+        authDomain: "la-guardia-delle-ombre-adf24.firebaseapp.com",
+        projectId: "la-guardia-delle-ombre-adf24",
+        storageBucket: "la-guardia-delle-ombre-adf24.firebasestorage.app",
+        messagingSenderId: "152288534171",
+        appId: "1:152288534171:web:825689c6bb1972709d303e"
+    };
 
     // ⚠️ INSERISCI QUI LA TUA EMAIL PERSONALE (CREATORE)
     const CREATOR_EMAIL = "schena.g2010@gmail.com";
@@ -83,6 +83,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
+      gap: 1rem;
     }
 
     .brand { display: flex; align-items: center; gap: 1rem; }
@@ -91,8 +92,38 @@
       font-family: 'Cinzel', serif;
       color: var(--accent);
       margin: 0;
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.5rem 1rem 0.5rem 2.5rem;
+      background: #000;
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 20px;
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
     }
 
     .btn {
@@ -107,6 +138,7 @@
       align-items: center;
       gap: 0.5rem;
       transition: all 0.2s;
+      white-space: nowrap;
     }
 
     .btn:hover { background: var(--accent-hover); }
@@ -278,6 +310,12 @@
       <h1 class="title">La Guardia delle Ombre</h1>
     </div>
 
+    <!-- BARRA DI RICERCA -->
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="global-search" placeholder="Cerca nel mondo..." oninput="handleSearch()">
+    </div>
+
     <div id="auth-actions">
       <button id="login-btn" class="btn" onclick="openModal('login-modal')">
         <i class="fa-solid fa-key"></i> Accesso Admin
@@ -311,7 +349,7 @@
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <div>
-          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Inizializzazione...</h2>
+          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Benvenuto</h2>
           <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;"></p>
         </div>
         <div style="display:flex; gap:0.5rem;">
@@ -426,16 +464,37 @@
     let currentUserRole = "visitor";
     let currentUserEmail = "";
     let adminEmailsList = [];
+    let searchQuery = "";
 
     window.addEventListener('DOMContentLoaded', () => {
-      // Ascolta la lista Admin da Firestore
       if (window.firebaseDb) {
+        // Ascolta la lista Admin
         const adminsRef = window.collection(window.firebaseDb, "admins");
         window.onSnapshot(adminsRef, (snapshot) => {
           adminEmailsList = [];
           snapshot.forEach(docSnap => adminEmailsList.push(docSnap.id.toLowerCase()));
           checkUserRole();
           renderAdminsList();
+        }, (error) => {
+          console.log("Lettura admins ignorata o non autorizzata:", error.message);
+        });
+
+        // Ascolta le sezioni del mondo
+        const sectionsRef = window.collection(window.firebaseDb, "sections");
+        window.onSnapshot(sectionsRef, (snapshot) => {
+          sectionsData = [];
+          snapshot.forEach((docSnap) => {
+            sectionsData.push({ id: docSnap.id, ...docSnap.data() });
+          });
+
+          if (!activeSectionId && sectionsData.length > 0) {
+            activeSectionId = sectionsData[0].id;
+          }
+          renderSidebar();
+          renderActiveSection();
+        }, (error) => {
+          console.error("Errore lettura sezioni:", error);
+          document.getElementById('active-section-title').innerText = "Errore di connessione al database";
         });
       }
 
@@ -447,26 +506,6 @@
             currentUserEmail = "";
           }
           checkUserRole();
-        });
-      }
-
-      if (window.firebaseDb) {
-        const sectionsRef = window.collection(window.firebaseDb, "sections");
-        window.onSnapshot(sectionsRef, (snapshot) => {
-          sectionsData = [];
-          snapshot.forEach((docSnap) => {
-            sectionsData.push({ id: docSnap.id, ...docSnap.data() });
-          });
-
-          if (sectionsData.length === 0) {
-            initializeDefaultData();
-          } else {
-            if (!activeSectionId && sectionsData.length > 0) {
-              activeSectionId = sectionsData[0].id;
-            }
-            renderSidebar();
-            renderActiveSection();
-          }
         });
       }
     });
@@ -484,31 +523,14 @@
       updateUI();
     }
 
-    async function initializeDefaultData() {
-      const defaultSecDoc = window.doc(window.firebaseDb, "sections", "personaggi");
-      const defaultData = {
-        title: "Personaggi",
-        desc: "I protagonisti, alleati e nemici incontrati durante le avventure.",
-        cards: [
-          {
-            id: "c1",
-            title: "Capitano Valerius",
-            desc: "Comandante della Guardia delle Ombre. Un veterano di molte battaglie, noto per la sua lealtà incondizionata.",
-            secret: "Custodisce la mappa segreta delle catacombe dimenticate.",
-            img: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500"
-          }
-        ]
-      };
-      try {
-        await window.setDoc(defaultSecDoc, defaultData);
-      } catch (e) {
-        console.error("Errore inizializzazione:", e);
-      }
-    }
-
     function renderSidebar() {
       const menu = document.getElementById('sections-menu');
       menu.innerHTML = '';
+
+      if (sectionsData.length === 0) {
+        menu.innerHTML = '<li style="padding: 0.75rem; color: var(--text-muted); font-size: 0.85rem;">Nessuna sezione presente. Accedi come Admin per crearne una.</li>';
+        return;
+      }
 
       sectionsData.forEach((sec) => {
         const li = document.createElement('li');
@@ -526,8 +548,8 @@
     function renderActiveSection() {
       const sec = sectionsData.find(s => s.id === activeSectionId);
       if (!sec) {
-        document.getElementById('active-section-title').innerText = "Nessuna Sezione";
-        document.getElementById('active-section-desc').innerText = "";
+        document.getElementById('active-section-title').innerText = "Seleziona una Sezione";
+        document.getElementById('active-section-desc').innerText = "Usa il menu laterale o crea una nuova sezione.";
         document.getElementById('cards-grid').innerHTML = "";
         return;
       }
@@ -538,7 +560,23 @@
       const grid = document.getElementById('cards-grid');
       grid.innerHTML = '';
 
-      const cards = sec.cards || [];
+      let cards = sec.cards || [];
+      
+      // Filtra in base alla ricerca globale
+      if (searchQuery.trim() !== "") {
+        const q = searchQuery.toLowerCase();
+        cards = cards.filter(c => 
+          (c.title && c.title.toLowerCase().includes(q)) || 
+          (c.desc && c.desc.toLowerCase().includes(q)) || 
+          (currentUserRole !== 'visitor' && c.secret && c.secret.toLowerCase().includes(q))
+        );
+      }
+
+      if (cards.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessuna scheda trovata.</p>';
+        return;
+      }
+
       cards.forEach((card, cardIdx) => {
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card';
@@ -551,4 +589,237 @@
             ${currentUserRole !== 'visitor' ? `
               <div class="card-actions">
                 <button class="btn btn-secondary" style="font-size:0.75rem; padding: 4px 8px;" onclick="openEditCardModal(${cardIdx})"><i class="fa-solid fa-pen"></i> Modifica</button>
-                <button class="btn btn-danger" style="font-size:0.
+                <button class="btn btn-danger" style="font-size:0.75rem; padding: 4px 8px;" onclick="deleteCard(${cardIdx})"><i class="fa-solid fa-trash"></i> Elimina</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        grid.appendChild(cardDiv);
+      });
+    }
+
+    window.handleSearch = () => {
+      const input = document.getElementById('global-search');
+      searchQuery = input ? input.value : "";
+      renderActiveSection();
+    };
+
+    function updateUI() {
+      const loginBtn = document.getElementById('login-btn');
+      const userInfo = document.getElementById('user-info');
+      const userDisplay = document.getElementById('user-display');
+      const roleBanner = document.getElementById('role-banner');
+      const addSecBtn = document.getElementById('add-sec-btn');
+      const delSecBtn = document.getElementById('delete-sec-btn');
+      const addCardBtn = document.getElementById('add-card-btn');
+      const manageAdminsBtn = document.getElementById('manage-admins-btn');
+
+      if (currentUserRole !== "visitor") {
+        loginBtn.style.display = 'none';
+        userInfo.style.display = 'flex';
+        userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
+
+        roleBanner.className = `status-banner ${currentUserRole}`;
+        roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Accesso <strong>${currentUserRole.toUpperCase()}</strong> attivo: puoi modificare e aggiungere sezioni o schede.`;
+        roleBanner.style.display = 'flex';
+
+        addSecBtn.style.display = 'inline-flex';
+        delSecBtn.style.display = 'inline-flex';
+        addCardBtn.style.display = 'inline-flex';
+
+        manageAdminsBtn.style.display = (currentUserRole === 'creator') ? 'inline-flex' : 'none';
+      } else {
+        loginBtn.style.display = 'inline-flex';
+        userInfo.style.display = 'none';
+        roleBanner.style.display = 'none';
+        addSecBtn.style.display = 'none';
+        delSecBtn.style.display = 'none';
+        addCardBtn.style.display = 'none';
+        manageAdminsBtn.style.display = 'none';
+      }
+
+      renderActiveSection();
+    }
+
+    window.openManageAdminsModal = () => {
+      renderAdminsList();
+      openModal('manage-admins-modal');
+    };
+
+    function renderAdminsList() {
+      const listDiv = document.getElementById('admins-list');
+      if (!listDiv) return;
+      listDiv.innerHTML = '';
+
+      if (adminEmailsList.length === 0) {
+        listDiv.innerHTML = '<p style="font-size:0.8rem; color:var(--text-muted);">Nessun admin aggiuntivo registrato.</p>';
+        return;
+      }
+
+      adminEmailsList.forEach(email => {
+        const item = document.createElement('div');
+        item.className = 'admin-list-item';
+        item.innerHTML = `
+          <span style="font-size:0.85rem;">${email}</span>
+          <button class="btn btn-danger" style="font-size:0.7rem; padding: 2px 6px;" onclick="revokeAdminRole('${email}')">Revoca</button>
+        `;
+        listDiv.appendChild(item);
+      });
+    }
+
+    window.addAdminRole = async () => {
+      const email = document.getElementById('new-admin-email').value.trim().toLowerCase();
+      if (!email) return;
+
+      try {
+        const adminDoc = window.doc(window.firebaseDb, "admins", email);
+        await window.setDoc(adminDoc, { role: "admin", grantedAt: new Date().toISOString() });
+        document.getElementById('new-admin-email').value = '';
+      } catch (e) {
+        alert("Errore aggiunta admin: " + e.message);
+      }
+    };
+
+    window.revokeAdminRole = async (email) => {
+      if (!confirm(`Vuoi revocare i permessi di Admin a ${email}?`)) return;
+      try {
+        const adminDoc = window.doc(window.firebaseDb, "admins", email);
+        await window.deleteDoc(adminDoc);
+      } catch (e) {
+        alert("Errore revoca admin: " + e.message);
+      }
+    };
+
+    window.addSection = async () => {
+      const title = document.getElementById('sec-title-input').value.trim();
+      const desc = document.getElementById('sec-desc-input').value.trim();
+      if (!title) return;
+
+      const secId = title.toLowerCase().replace(/\s+/g, '-');
+      const docRef = window.doc(window.firebaseDb, "sections", secId);
+
+      try {
+        await window.setDoc(docRef, { title, desc, cards: [] });
+        document.getElementById('sec-title-input').value = '';
+        document.getElementById('sec-desc-input').value = '';
+        closeModal('add-sec-modal');
+        activeSectionId = secId;
+      } catch (e) {
+        alert("Errore salvataggio sezione: " + e.message);
+      }
+    };
+
+    window.deleteActiveSection = async () => {
+      if (!activeSectionId) return;
+      if (!confirm("Sei sicuro di voler eliminare interamente questa sezione e tutte le sue schede?")) return;
+
+      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
+      try {
+        await window.deleteDoc(docRef);
+        activeSectionId = sectionsData.length > 1 ? sectionsData.find(s => s.id !== activeSectionId)?.id : null;
+      } catch (e) {
+        alert("Errore eliminazione sezione: " + e.message);
+      }
+    };
+
+    window.openAddCardModal = () => {
+      document.getElementById('card-modal-title').innerText = "Nuova Scheda";
+      document.getElementById('edit-card-index').value = "-1";
+      document.getElementById('card-title-input').value = '';
+      document.getElementById('card-img-input').value = '';
+      document.getElementById('card-desc-input').value = '';
+      document.getElementById('card-secret-input').value = '';
+      openModal('card-modal');
+    };
+
+    window.openEditCardModal = (cardIdx) => {
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec || !sec.cards[cardIdx]) return;
+
+      const card = sec.cards[cardIdx];
+      document.getElementById('card-modal-title').innerText = "Modifica Scheda";
+      document.getElementById('edit-card-index').value = cardIdx;
+      document.getElementById('card-title-input').value = card.title || '';
+      document.getElementById('card-img-input').value = card.img || '';
+      document.getElementById('card-desc-input').value = card.desc || '';
+      document.getElementById('card-secret-input').value = card.secret || '';
+      openModal('card-modal');
+    };
+
+    window.saveCard = async () => {
+      const idx = parseInt(document.getElementById('edit-card-index').value);
+      const title = document.getElementById('card-title-input').value.trim();
+      const img = document.getElementById('card-img-input').value.trim();
+      const desc = document.getElementById('card-desc-input').value.trim();
+      const secret = document.getElementById('card-secret-input').value.trim();
+
+      if (!title || !activeSectionId) return;
+
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec) return;
+
+      const updatedCards = [...(sec.cards || [])];
+      const cardData = {
+        id: idx >= 0 ? updatedCards[idx].id : Date.now().toString(),
+        title,
+        img,
+        desc,
+        secret
+      };
+
+      if (idx >= 0) {
+        updatedCards[idx] = cardData;
+      } else {
+        updatedCards.push(cardData);
+      }
+
+      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
+      try {
+        await window.setDoc(docRef, { ...sec, cards: updatedCards });
+        closeModal('card-modal');
+      } catch (e) {
+        alert("Errore durante il salvataggio: " + e.message);
+      }
+    };
+
+    window.deleteCard = async (cardIdx) => {
+      if (!confirm("Vuoi davvero eliminare questa scheda?")) return;
+
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec) return;
+
+      const updatedCards = [...(sec.cards || [])];
+      updatedCards.splice(cardIdx, 1);
+
+      const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
+      try {
+        await window.setDoc(docRef, { ...sec, cards: updatedCards });
+      } catch (e) {
+        alert("Errore durante l'eliminazione: " + e.message);
+      }
+    };
+
+    window.handleLogin = async () => {
+      const email = document.getElementById('login-email').value;
+      const pass = document.getElementById('login-password').value;
+      const err = document.getElementById('login-error');
+
+      try {
+        await window.signInWithEmailAndPassword(window.firebaseAuth, email, pass);
+        window.closeModal('login-modal');
+        err.style.display = 'none';
+      } catch (e) {
+        err.innerText = "Credenziali errate o utente non trovato.";
+        err.style.display = 'block';
+      }
+    };
+
+    window.handleLogout = async () => {
+      if (window.firebaseAuth) await window.signOut(window.firebaseAuth);
+    };
+
+    window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+    window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+  </script>
+</body>
+</html>
