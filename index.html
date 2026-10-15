@@ -237,7 +237,6 @@
     .card-img { height: 180px; width: 100%; object-fit: cover; background: #1a1d2d; }
     .card-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
     .card-title { font-family: 'Cinzel', serif; color: var(--accent); margin: 0; font-size: 1.2rem; }
-
     .card-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 
     .extra-fields-container {
@@ -291,57 +290,88 @@
       margin-top: 0.5rem;
     }
 
-    /* Stile per la visualizzazione Calendario */
-    .calendar-config-box {
+    /* Grafica Calendario Interattivo */
+    .calendar-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       background: var(--bg-card);
-      border: 1px solid var(--accent);
+      border: 1px solid var(--border);
+      padding: 1rem 1.5rem;
       border-radius: 8px;
-      padding: 1.25rem;
       margin-bottom: 1.5rem;
     }
 
-    .calendar-info-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(212, 175, 55, 0.1);
-      border: 1px solid var(--accent);
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      color: var(--accent);
-      margin-bottom: 1rem;
-    }
-
-    .timeline-container {
+    .months-container {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      margin-top: 1rem;
-      border-left: 2px solid var(--accent);
-      padding-left: 1.5rem;
-      margin-left: 0.5rem;
+      gap: 2rem;
     }
 
-    .timeline-event-card {
+    .month-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      padding: 1rem;
-      border-radius: 6px;
-      position: relative;
+      border-radius: 8px;
+      padding: 1.25rem;
     }
 
-    .timeline-date-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(212, 175, 55, 0.15);
+    .month-title {
+      font-family: 'Cinzel', serif;
       color: var(--accent);
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 0.8rem;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .day-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .day-box:hover {
+      border-color: var(--accent);
+      background: rgba(212, 175, 55, 0.03);
+    }
+
+    .day-box.has-events {
+      border-color: var(--accent);
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    .day-number {
       font-weight: bold;
-      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .day-name-small {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .day-events-preview {
+      font-size: 0.75rem;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 4px;
     }
 
     .modal {
@@ -370,7 +400,7 @@
     .form-group { margin-bottom: 1.25rem; }
     .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--accent); font-size: 0.85rem; }
 
-    input[type="text"], input[type="email"], input[type="password"], textarea {
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"], select, textarea {
       width: 100%;
       padding: 0.65rem;
       background: #000;
@@ -484,23 +514,34 @@
     </main>
   </div>
 
+  <!-- MODALE DETTAGLI GIORNO (APERTA AL CLICK SUL GIORNO DEL CALENDARIO) -->
+  <div id="day-details-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="day-modal-title" style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Dettagli Giorno</h3>
+      <div id="day-modal-events-list" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;"></div>
+      <div class="modal-actions" style="margin-top: 2rem;">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('day-details-modal')">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE CONFIGURAZIONE STRUTTURA CALENDARIO -->
   <div id="calendar-config-modal" class="modal">
     <div class="modal-content">
       <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Personalizza Nomi Calendario</h3>
-      <p style="font-size:0.85rem; color: var(--text-muted);">Definisci la nomenclatura fantasy per le Ere, i Mesi e i Giorni del tuo mondo.</p>
+      <p style="font-size:0.85rem; color: var(--text-muted);">Definisci la nomenclatura delle Ere, dei Mesi (separati da virgola) e dei Giorni (separati da virgola).</p>
 
       <div class="form-group">
-        <label>Nome dell'Era / Struttura Anno</label>
-        <input type="text" id="cfg-era-name" placeholder="es. Era dei Draghi, Terzo Ciclo">
+        <label>Nome dell'Era</label>
+        <input type="text" id="cfg-era-name" placeholder="es. Quinta Era">
       </div>
       <div class="form-group">
-        <label>Nomi dei Mesi / Stagioni (separati da virgola)</label>
-        <input type="text" id="cfg-months-names" placeholder="es. Solaria, Lunaria, Umbralia, Marea">
+        <label>Nomi dei Mesi (es. Solaria, Lunaria, ...)</label>
+        <input type="text" id="cfg-months-names" placeholder="Solaria, Lunaria, Umbralia, Marea">
       </div>
       <div class="form-group">
-        <label>Nomi dei Giorni (separati da virgola)</label>
-        <input type="text" id="cfg-days-names" placeholder="es. Primus, Secundus, Tertius, Quartus, Quintus">
+        <label>Nomi dei Giorni della Settimana (es. Primus, Secundus, ...)</label>
+        <input type="text" id="cfg-days-names" placeholder="Primus, Secundus, Tertius, Quartus, Quintus">
       </div>
 
       <div class="modal-actions">
@@ -515,8 +556,16 @@
     <div class="modal-content">
       <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Nuovo Evento nel Calendario</h3>
       <div class="form-group">
-        <label>Data / Periodo (es. Anno 300 - 12 Solaria)</label>
-        <input type="text" id="cal-event-date" placeholder="es. Anno 420, Primus di Solaria">
+        <label>Anno (numero)</label>
+        <input type="number" id="cal-event-year" value="1">
+      </div>
+      <div class="form-group">
+        <label>Mese</label>
+        <select id="cal-event-month"></select>
+      </div>
+      <div class="form-group">
+        <label>Giorno (1 - 31)</label>
+        <input type="number" id="cal-event-day" min="1" max="31" value="1">
       </div>
       <div class="form-group">
         <label>Titolo dell'Evento</label>
@@ -594,8 +643,8 @@
 
       <div class="form-group">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <label style="margin:0;">Sotto-finestre / Descrizioni Extra & Calendario</label>
-          <button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="addExtraFieldInput('', '', '')">
+          <label style="margin:0;">Sotto-finestre / Descrizioni Extra & Data</label>
+          <button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="addExtraFieldInput('', '', 1, '', 1)">
             <i class="fa-solid fa-plus"></i> Aggiungi Sotto-finestra
           </button>
         </div>
@@ -623,7 +672,9 @@
     let adminEmailsList = [];
     let searchQuery = "";
     
-    // Configurazione Calendario predefinita
+    // Stato del calendario visualizzato
+    let currentCalendarYear = 1;
+    
     let calendarSettings = {
       eraName: "Quinta Era",
       months: "Solaria, Lunaria, Umbralia, Marea",
@@ -632,7 +683,6 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       if (window.firebaseDb) {
-        // Ascolta le impostazioni del Calendario
         const calSettingsRef = window.doc(window.firebaseDb, "settings", "calendar");
         window.onSnapshot(calSettingsRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -744,6 +794,17 @@
       renderActiveSection();
     };
 
+    // Helper per ottenere array di mesi e giorni puliti
+    function getMonthsList() {
+      if (!calendarSettings.months) return ["Solaria", "Lunaria", "Umbralia", "Marea"];
+      return calendarSettings.months.split(',').map(m => m.trim()).filter(Boolean);
+    }
+
+    function getDaysList() {
+      if (!calendarSettings.days) return ["Primus", "Secundus", "Tertius", "Quartus", "Quintus"];
+      return calendarSettings.days.split(',').map(d => d.trim()).filter(Boolean);
+    }
+
     function renderActiveSection() {
       const titleEl = document.getElementById('active-section-title');
       const descEl = document.getElementById('active-section-desc');
@@ -753,10 +814,10 @@
       const addCalBtn = document.getElementById('add-calendar-event-btn');
       const cfgCalBtn = document.getElementById('config-calendar-btn');
 
-      // Visualizzazione Calendario
+      // Visualizzazione Calendario Avanzato con Tabella Mesi / Giorni
       if (activeSectionId === "CALENDAR_VIEW") {
         if (titleEl) titleEl.innerText = "Calendario e Cronologia";
-        if (descEl) descEl.innerText = "Tutti gli eventi storici e le date registrate nel mondo.";
+        if (descEl) descEl.innerText = `Gestione temporale del mondo (${calendarSettings.eraName || 'Era Corrente'})`;
         if (addCardBtn) addCardBtn.style.display = 'none';
         if (delSecBtn) delSecBtn.style.display = 'none';
         if (addCalBtn) addCalBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
@@ -765,15 +826,7 @@
         if (grid) {
           grid.innerHTML = '';
 
-          // Box riassuntivo Nomi Calendario
-          const infoBox = document.createElement('div');
-          infoBox.className = 'calendar-info-badge';
-          infoBox.innerHTML = `
-            <i class="fa-solid fa-compass"></i>
-            <span><strong>Struttura Tempo:</strong> ${calendarSettings.eraName || 'Era Corrente'} | <strong>Mesi:</strong> ${calendarSettings.months || 'Predefiniti'} | <strong>Giorni:</strong> ${calendarSettings.days || 'Predefiniti'}</span>
-          `;
-          grid.appendChild(infoBox);
-          
+          // Raccoglie tutti gli eventi
           let allEvents = [];
           sectionsData.forEach(sec => {
             if (sec.id === "calendar-events") {
@@ -785,9 +838,11 @@
                 sec.cards.forEach(card => {
                   if (card.extraFields && Array.isArray(card.extraFields)) {
                     card.extraFields.forEach(ef => {
-                      if (ef.date) {
+                      if (ef.year && ef.month && ef.day) {
                         allEvents.push({
-                          date: ef.date,
+                          year: parseInt(ef.year),
+                          month: ef.month,
+                          day: parseInt(ef.day),
                           title: ef.label || card.title,
                           desc: ef.value,
                           source: `Scheda: ${card.title} (${sec.title})`
@@ -800,31 +855,72 @@
             }
           });
 
-          if (allEvents.length === 0) {
-            const emptyMsg = document.createElement('p');
-            emptyMsg.style.color = 'var(--text-muted)';
-            emptyMsg.style.fontSize = '0.9rem';
-            emptyMsg.innerText = 'Nessuna data registrata. Aggiungi date nelle sotto-finestre delle schede o crea un evento manuale.';
-            grid.appendChild(emptyMsg);
-            return;
-          }
+          // Barra di navigazione anni (disponibile per tutti)
+          const navBar = document.createElement('div');
+          navBar.className = 'calendar-nav-bar';
+          navBar.innerHTML = `
+            <button class="btn btn-secondary" onclick="changeYear(-1)"><i class="fa-solid fa-chevron-left"></i> Anno Precedente</button>
+            <span style="font-family: 'Cinzel'; font-size: 1.2rem; color: var(--accent); font-weight: bold;">${calendarSettings.eraName || 'Anno'} — ${currentCalendarYear}</span>
+            <button class="btn btn-secondary" onclick="changeYear(1)">Anno Successivo <i class="fa-solid fa-chevron-right"></i></button>
+          `;
+          grid.appendChild(navBar);
 
-          const timelineDiv = document.createElement('div');
-          timelineDiv.className = 'timeline-container';
-          
-          allEvents.forEach(ev => {
-            const evBox = document.createElement('div');
-            evBox.className = 'timeline-event-card';
-            evBox.innerHTML = `
-              <div class="timeline-date-badge"><i class="fa-regular fa-calendar"></i> ${ev.date}</div>
-              <h3 style="font-family: 'Cinzel'; color: var(--accent); margin: 0.25rem 0 0.5rem 0; font-size: 1.1rem;">${ev.title}</h3>
-              <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #cbd5e1; white-space: pre-line;">${ev.desc || ''}</p>
-              <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">Fonte: ${ev.source}</div>
-            `;
-            timelineDiv.appendChild(evBox);
+          // Container dei mesi per l'anno corrente
+          const monthsContainer = document.createElement('div');
+          monthsContainer.className = 'months-container';
+
+          const monthsList = getMonthsList();
+          const daysList = getDaysList();
+
+          monthsList.forEach(monthName => {
+            const monthCard = document.createElement('div');
+            monthCard.className = 'month-card';
+
+            const mTitle = document.createElement('div');
+            mTitle.className = 'month-title';
+            mTitle.innerHTML = `<i class="fa-solid fa-moon"></i> Mese di ${monthName}`;
+            monthCard.appendChild(mTitle);
+
+            const daysGrid = document.createElement('div');
+            daysGrid.className = 'days-grid';
+
+            // Genera esattamente 31 giorni per mese
+            for (let d = 1; d <= 31; d++) {
+              // Assegna il nome del giorno ciclicamente in base alla lista configurata
+              const dayNameIndex = (d - 1) % daysList.length;
+              const currentDayName = daysList[dayNameIndex];
+
+              // Filtra eventi per questo anno, mese e giorno
+              const dayEvents = allEvents.filter(ev => ev.year === currentCalendarYear && ev.month === monthName && ev.day === d);
+              const hasEvents = dayEvents.length > 0;
+
+              const dayBox = document.createElement('div');
+              dayBox.className = `day-box ${hasEvents ? 'has-events' : ''}`;
+              
+              let previewHtml = '';
+              if (hasEvents) {
+                previewHtml = `<div class="day-events-preview"><i class="fa-solid fa-star"></i> ${dayEvents[0].title}</div>`;
+              }
+
+              dayBox.innerHTML = `
+                <div>
+                  <div class="day-number">${d}</div>
+                  <div class="day-name-small">${currentDayName}</div>
+                </div>
+                ${previewHtml}
+              `;
+
+              // Click sul giorno per aprire i dettagli
+              dayBox.onclick = () => openDayDetailsModal(currentCalendarYear, monthName, d, dayEvents);
+
+              daysGrid.appendChild(dayBox);
+            }
+
+            monthCard.appendChild(daysGrid);
+            monthsContainer.appendChild(monthCard);
           });
 
-          grid.appendChild(timelineDiv);
+          grid.appendChild(monthsContainer);
         }
         return;
       }
@@ -868,7 +964,8 @@
         if (card.extraFields && Array.isArray(card.extraFields)) {
           card.extraFields.forEach(ef => {
             if (ef.label || ef.value) {
-              const dateHtml = ef.date ? `<span class="extra-field-date"><i class="fa-regular fa-calendar"></i> ${ef.date}</span>` : '';
+              const dateStr = ef.year ? `Giorno ${ef.day} di ${ef.month}, Anno ${ef.year}` : '';
+              const dateHtml = dateStr ? `<span class="extra-field-date"><i class="fa-regular fa-calendar"></i> ${dateStr}</span>` : '';
               extraFieldsHtml += `
                 <div class="extra-field-box">
                   <div class="extra-field-header">
@@ -907,6 +1004,39 @@
         grid.appendChild(cardDiv);
       });
     }
+
+    window.changeYear = (delta) => {
+      currentCalendarYear += delta;
+      if (currentCalendarYear < 1) currentCalendarYear = 1;
+      renderActiveSection();
+    };
+
+    // Apre la modale con i dettagli completi del giorno selezionato
+    window.openDayDetailsModal = (year, month, day, events) => {
+      document.getElementById('day-modal-title').innerText = `Giorno ${day} di ${month} (Anno ${year})`;
+      const listDiv = document.getElementById('day-modal-events-list');
+      listDiv.innerHTML = '';
+
+      if (events.length === 0) {
+        listDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessun evento registrato in questa data.</p>';
+      } else {
+        events.forEach(ev => {
+          const item = document.createElement('div');
+          item.style.background = '#000';
+          item.style.border = '1px solid var(--border)';
+          item.style.padding = '1rem';
+          item.style.borderRadius = '6px';
+          item.innerHTML = `
+            <h4 style="font-family: 'Cinzel'; color: var(--accent); margin: 0 0 0.5rem 0; font-size: 1rem;">${ev.title}</h4>
+            <p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: var(--text); white-space: pre-line;">${ev.desc || 'Nessuna descrizione.'}</p>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">Fonte: ${ev.source}</div>
+          `;
+          listDiv.appendChild(item);
+        });
+      }
+
+      openModal('day-details-modal');
+    };
 
     window.handleSearch = () => {
       const input = document.getElementById('global-search');
@@ -977,27 +1107,46 @@
       }
     };
 
+    // Popola il menu a tendina dei mesi nei form di inserimento data
+    function populateMonthSelect(selectId, selectedVal = '') {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      select.innerHTML = '';
+      const months = getMonthsList();
+      months.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.innerText = m;
+        if (m === selectedVal) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
     window.openAddCalendarModal = () => {
-      document.getElementById('cal-event-date').value = '';
+      document.getElementById('cal-event-year').value = currentCalendarYear;
+      populateMonthSelect('cal-event-month');
+      document.getElementById('cal-event-day').value = 1;
       document.getElementById('cal-event-title').value = '';
       document.getElementById('cal-event-desc').value = '';
       openModal('calendar-modal');
     };
 
     window.saveCalendarEvent = async () => {
-      const date = document.getElementById('cal-event-date').value.trim();
+      const year = parseInt(document.getElementById('cal-event-year').value);
+      const month = document.getElementById('cal-event-month').value;
+      const day = parseInt(document.getElementById('cal-event-day').value);
       const title = document.getElementById('cal-event-title').value.trim();
       const desc = document.getElementById('cal-event-desc').value.trim();
 
-      if (!date || !title) {
-        alert("Inserisci almeno una data e un titolo.");
+      if (!title || !year || !month || !day) {
+        alert("Compila tutti i campi obbligatori della data e dell'evento.");
         return;
       }
 
       let calSec = sectionsData.find(s => s.id === "calendar-events");
       let cards = calSec && calSec.cards ? [...calSec.cards] : [];
       
-      cards.push({ id: Date.now().toString(), date, title, desc });
+      cards.push({ id: Date.now().toString(), year, month, day, title, desc });
 
       const docRef = window.doc(window.firebaseDb, "sections", "calendar-events");
       try {
@@ -1007,22 +1156,31 @@
           cards: cards
         });
         closeModal('calendar-modal');
+        currentCalendarYear = year;
         selectCalendarSection();
       } catch (e) {
         alert("Errore salvataggio evento: " + e.message);
       }
     };
 
-    window.addExtraFieldInput = (label = '', value = '', date = '') => {
+    window.addExtraFieldInput = (label = '', value = '', year = 1, month = '', day = 1) => {
       const container = document.getElementById('extra-fields-inputs-container');
       if (!container) return;
+      
+      const monthsList = getMonthsList();
+      const selectedMonth = month || monthsList[0];
+
       const row = document.createElement('div');
       row.className = 'dynamic-field-row';
       row.innerHTML = `
         <div style="display: flex; gap: 0.5rem;">
-          <input type="text" placeholder="Titolo sotto-finestra (es. Storia)" value="${label}" style="flex: 2;" class="ef-label">
-          <input type="text" placeholder="Data (es. Anno 421)" value="${date}" style="flex: 1;" class="ef-date">
+          <input type="text" placeholder="Titolo sotto-finestra (es. Battaglia)" value="${label}" style="flex: 2;" class="ef-label">
           <button type="button" class="btn btn-danger" style="padding: 4px 10px;" onclick="this.closest('.dynamic-field-row').remove()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <div style="flex: 1;"><label style="font-size:0.7rem; color:var(--accent); margin-bottom:2px;">Anno</label><input type="number" class="ef-year" value="${year}" min="1"></div>
+          <div style="flex: 1;"><label style="font-size:0.7rem; color:var(--accent); margin-bottom:2px;">Mese</label><select class="ef-month">${monthsList.map(m => `<option value="${m}" ${m === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+          <div style="flex: 1;"><label style="font-size:0.7rem; color:var(--accent); margin-bottom:2px;">Giorno (1-31)</label><input type="number" class="ef-day" value="${day}" min="1" max="31"></div>
         </div>
         <textarea placeholder="Descrizione dettagliata..." rows="2" class="ef-value">${value}</textarea>
       `;
@@ -1057,7 +1215,7 @@
         container.innerHTML = '';
         if (card.extraFields && Array.isArray(card.extraFields)) {
           card.extraFields.forEach(ef => {
-            window.addExtraFieldInput(ef.label, ef.value, ef.date);
+            window.addExtraFieldInput(ef.label, ef.value, ef.year || 1, ef.month || '', ef.day || 1);
           });
         }
       }
@@ -1077,9 +1235,12 @@
       rows.forEach(row => {
         const label = row.querySelector('.ef-label').value.trim();
         const value = row.querySelector('.ef-value').value.trim();
-        const date = row.querySelector('.ef-date').value.trim();
-        if (label || value || date) {
-          extraFields.push({ label, value, date });
+        const year = parseInt(row.querySelector('.ef-year').value) || 1;
+        const month = row.querySelector('.ef-month').value;
+        const day = parseInt(row.querySelector('.ef-day').value) || 1;
+        
+        if (label || value) {
+          extraFields.push({ label, value, year, month, day });
         }
       });
 
@@ -1155,7 +1316,7 @@
       try {
         const adminDoc = window.doc(window.firebaseDb, "admins", email);
         await window.setDoc(adminDoc, { role: "admin", grantedAt: new Date().toISOString() });
-        document.getElementById('new-admin-email').value = '';
+        document.getElementById('new-admin-email'].value = '';
       } catch (e) {
         alert("Errore aggiunta admin: " + e.message);
       }
@@ -1194,15 +1355,4 @@
       const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
       try {
         await window.deleteDoc(docRef);
-        activeSectionId = sectionsData.length > 1 ? sectionsData.find(s => s.id !== activeSectionId)?.id : null;
-      } catch (e) {
-        alert("Errore eliminazione: " + e.message);
-      }
-    };
-
-    window.handleLogout = async () => {
-      if (window.firebaseAuth) await window.signOut(window.firebaseAuth);
-    };
-  </script>
-</body>
-</html>
+        activeSectionId = sectionsData.length > 1 ? sectionsData.find(s =>
