@@ -593,8 +593,8 @@
   <!-- MODALE CONFIGURAZIONE STRUTTURA CALENDARIO -->
   <div id="calendar-config-modal" class="modal">
     <div class="modal-content">
-      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Personalizza Nomi Calendario</h3>
-      <p style="font-size:0.85rem; color: var(--text-muted);">Definisci la nomenclatura delle Ere, dei Mesi (separati da virgola) e dei Giorni (separati da virgola).</p>
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Configura Calendario</h3>
+      <p style="font-size:0.85rem; color: var(--text-muted);">Imposta il nome dell'era, i mesi, i giorni della settimana e il numero di giorni di ciascun mese.</p>
 
       <div class="form-group">
         <label>Nome dell'Era</label>
@@ -609,7 +609,7 @@
         <input type="text" id="cfg-days-names" placeholder="Primus, Secundus, Tertius, Quartus, Quintus">
       </div>
       <div class="form-group">
-        <label>Giorni per ogni mese (da 1 a 366)</label>
+        <label>Quanti giorni ha ciascun mese? (da 1 a 366)</label>
         <div id="cfg-month-length-fields" class="month-length-fields"></div>
       </div>
 
@@ -633,7 +633,7 @@
         <select id="cal-event-month" onchange="updateCalendarEventDayLimit()"></select>
       </div>
       <div class="form-group">
-        <label>Giorno (1 - 31)</label>
+        <label id="cal-event-day-label" for="cal-event-day">Giorno del mese</label>
         <input type="number" id="cal-event-day" min="1" value="1">
       </div>
       <div class="form-group">
@@ -1391,9 +1391,11 @@
     window.updateCalendarEventDayLimit = () => {
       const monthSelect = document.getElementById("cal-event-month");
       const dayInput = document.getElementById("cal-event-day");
+      const dayLabel = document.getElementById("cal-event-day-label");
       if (!monthSelect || !dayInput) return;
       const maxDay = getMonthLength(monthSelect.value);
       dayInput.max = String(maxDay);
+      if (dayLabel) dayLabel.textContent = `Giorno del mese (1-${maxDay})`;
       if (Number(dayInput.value) > maxDay) dayInput.value = String(maxDay);
     };
 
