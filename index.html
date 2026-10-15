@@ -196,6 +196,12 @@
       color: var(--accent);
     }
 
+    .menu-item.calendar-menu {
+      border: 1px dashed var(--accent);
+      color: var(--accent);
+      margin-top: 1rem;
+    }
+
     main.content { flex: 1; padding: 2rem; overflow-y: auto; }
 
     .status-banner {
@@ -237,25 +243,42 @@
     .extra-fields-container {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.75rem;
       margin-top: 0.5rem;
     }
 
     .extra-field-box {
       background: var(--extra-field-bg);
       border: 1px solid var(--extra-field-border);
-      padding: 0.5rem 0.75rem;
-      border-radius: 4px;
+      padding: 0.75rem;
+      border-radius: 6px;
       font-size: 0.85rem;
+    }
+
+    .extra-field-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
     }
 
     .extra-field-title {
       font-weight: bold;
       color: var(--accent);
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 0.15rem;
+    }
+
+    .extra-field-date {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .secret-box {
@@ -266,6 +289,59 @@
       font-size: 0.85rem;
       color: #fca5a5;
       margin-top: 0.5rem;
+    }
+
+    /* Stile per la visualizzazione Calendario */
+    .calendar-config-box {
+      background: var(--bg-card);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .calendar-info-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(212, 175, 55, 0.1);
+      border: 1px solid var(--accent);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .timeline-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1rem;
+      border-left: 2px solid var(--accent);
+      padding-left: 1.5rem;
+      margin-left: 0.5rem;
+    }
+
+    .timeline-event-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 1rem;
+      border-radius: 6px;
+      position: relative;
+    }
+
+    .timeline-date-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(212, 175, 55, 0.15);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
     }
 
     .modal {
@@ -286,7 +362,7 @@
       border-radius: 8px;
       border: 1px solid var(--accent);
       width: 100%;
-      max-width: 600px;
+      max-width: 650px;
       max-height: 90vh;
       overflow-y: auto;
     }
@@ -319,10 +395,14 @@
     }
 
     .dynamic-field-row {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
       display: flex;
+      flex-direction: column;
       gap: 0.5rem;
-      margin-bottom: 0.5rem;
-      align-items: center;
     }
   </style>
 </head>
@@ -342,7 +422,6 @@
     </div>
 
     <div id="auth-actions">
-      <!-- Pulsante diretto che attiva il login nativo -->
       <button id="login-btn" class="btn" onclick="triggerNativeLogin()">
         <i class="fa-solid fa-key"></i> Accesso Admin
       </button>
@@ -367,6 +446,13 @@
           </button>
         </div>
         <ul id="sections-menu" class="menu-list"></ul>
+        
+        <!-- VOCE FISSA CALENDARIO -->
+        <ul class="menu-list" style="margin-top: 1rem;">
+          <li id="calendar-menu-item" class="menu-item calendar-menu" onclick="selectCalendarSection()">
+            <span><i class="fa-regular fa-calendar-days"></i> Calendario / Cronologia</span>
+          </li>
+        </ul>
       </div>
     </aside>
 
@@ -385,6 +471,12 @@
           <button id="add-card-btn" class="btn" style="display:none;" onclick="openAddCardModal()">
             <i class="fa-solid fa-square-plus"></i> Nuova Scheda
           </button>
+          <button id="add-calendar-event-btn" class="btn btn-purple" style="display:none;" onclick="openAddCalendarModal()">
+            <i class="fa-solid fa-calendar-plus"></i> Aggiungi Evento
+          </button>
+          <button id="config-calendar-btn" class="btn btn-secondary" style="display:none;" onclick="openModal('calendar-config-modal')">
+            <i class="fa-solid fa-sliders"></i> Configura Calendario
+          </button>
         </div>
       </div>
 
@@ -392,12 +484,59 @@
     </main>
   </div>
 
+  <!-- MODALE CONFIGURAZIONE STRUTTURA CALENDARIO -->
+  <div id="calendar-config-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Personalizza Nomi Calendario</h3>
+      <p style="font-size:0.85rem; color: var(--text-muted);">Definisci la nomenclatura fantasy per le Ere, i Mesi e i Giorni del tuo mondo.</p>
+
+      <div class="form-group">
+        <label>Nome dell'Era / Struttura Anno</label>
+        <input type="text" id="cfg-era-name" placeholder="es. Era dei Draghi, Terzo Ciclo">
+      </div>
+      <div class="form-group">
+        <label>Nomi dei Mesi / Stagioni (separati da virgola)</label>
+        <input type="text" id="cfg-months-names" placeholder="es. Solaria, Lunaria, Umbralia, Marea">
+      </div>
+      <div class="form-group">
+        <label>Nomi dei Giorni (separati da virgola)</label>
+        <input type="text" id="cfg-days-names" placeholder="es. Primus, Secundus, Tertius, Quartus, Quintus">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('calendar-config-modal')">Annulla</button>
+        <button class="btn" onclick="saveCalendarConfig()">Salva Configurazione</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE AGGIUNGI EVENTO CALENDARIO MANUALE -->
+  <div id="calendar-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Nuovo Evento nel Calendario</h3>
+      <div class="form-group">
+        <label>Data / Periodo (es. Anno 300 - 12 Solaria)</label>
+        <input type="text" id="cal-event-date" placeholder="es. Anno 420, Primus di Solaria">
+      </div>
+      <div class="form-group">
+        <label>Titolo dell'Evento</label>
+        <input type="text" id="cal-event-title" placeholder="es. Fondazione della capitale">
+      </div>
+      <div class="form-group">
+        <label>Descrizione / Dettagli</label>
+        <textarea id="cal-event-desc" rows="3" placeholder="Descrivi l'evento storico..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('calendar-modal')">Annulla</button>
+        <button class="btn" onclick="saveCalendarEvent()">Salva Evento</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE CREATORE: GESTIONE ADMIN -->
   <div id="manage-admins-modal" class="modal">
     <div class="modal-content">
       <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Gestione Permessi Amministratori</h3>
-      <p style="font-size:0.85rem; color: var(--text-muted);">Come Creatore puoi concedere o revocare i permessi di Admin.</p>
-      
       <div class="form-group">
         <label>Aggiungi Nuovo Admin (Email)</label>
         <div style="display:flex; gap:0.5rem;">
@@ -405,12 +544,10 @@
           <button class="btn" onclick="addAdminRole()">Aggiungi</button>
         </div>
       </div>
-
       <div class="form-group">
         <label>Lista Amministratori Attivi</label>
         <div id="admins-list"></div>
       </div>
-
       <div class="modal-actions">
         <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('manage-admins-modal')">Chiudi</button>
       </div>
@@ -436,7 +573,7 @@
     </div>
   </div>
 
-  <!-- MODALE SCHEDA (ADD / EDIT) -->
+  <!-- MODALE SCHEDA -->
   <div id="card-modal" class="modal">
     <div class="modal-content">
       <h3 id="card-modal-title" style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Gestione Scheda</h3>
@@ -447,7 +584,7 @@
         <input type="text" id="card-title-input">
       </div>
       <div class="form-group">
-        <label>URL Immagine</label>
+        <label>URL Immagine principale</label>
         <input type="text" id="card-img-input" placeholder="https://...">
       </div>
       <div class="form-group">
@@ -457,9 +594,9 @@
 
       <div class="form-group">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <label style="margin:0;">Finestre / Campi Extra</label>
-          <button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="addExtraFieldInput('', '')">
-            <i class="fa-solid fa-plus"></i> Aggiungi Campo
+          <label style="margin:0;">Sotto-finestre / Descrizioni Extra & Calendario</label>
+          <button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="addExtraFieldInput('', '', '')">
+            <i class="fa-solid fa-plus"></i> Aggiungi Sotto-finestra
           </button>
         </div>
         <div id="extra-fields-inputs-container"></div>
@@ -480,14 +617,30 @@
   <!-- SCRIPT DI LOGICA E FIREBASE -->
   <script type="module">
     let sectionsData = [];
-    let activeSectionId = null;
+    let activeSectionId = "PERSONAGGI_DEFAULT";
     let currentUserRole = "visitor";
     let currentUserEmail = "";
     let adminEmailsList = [];
     let searchQuery = "";
+    
+    // Configurazione Calendario predefinita
+    let calendarSettings = {
+      eraName: "Quinta Era",
+      months: "Solaria, Lunaria, Umbralia, Marea",
+      days: "Primus, Secundus, Tertius, Quartus, Quintus"
+    };
 
     window.addEventListener('DOMContentLoaded', () => {
       if (window.firebaseDb) {
+        // Ascolta le impostazioni del Calendario
+        const calSettingsRef = window.doc(window.firebaseDb, "settings", "calendar");
+        window.onSnapshot(calSettingsRef, (docSnap) => {
+          if (docSnap.exists()) {
+            calendarSettings = { ...calendarSettings, ...docSnap.data() };
+            if (activeSectionId === "CALENDAR_VIEW") renderActiveSection();
+          }
+        });
+
         const adminsRef = window.collection(window.firebaseDb, "admins");
         window.onSnapshot(adminsRef, (snapshot) => {
           adminEmailsList = [];
@@ -505,7 +658,7 @@
             sectionsData.push({ id: docSnap.id, ...docSnap.data() });
           });
 
-          if (!activeSectionId && sectionsData.length > 0) {
+          if (activeSectionId === "PERSONAGGI_DEFAULT" && sectionsData.length > 0) {
             activeSectionId = sectionsData[0].id;
           }
           renderSidebar();
@@ -527,7 +680,6 @@
       }
     });
 
-    // Funzione di Login Nativo (indipendente da modali HTML bloccate)
     window.triggerNativeLogin = async () => {
       const email = prompt("Inserisci la tua email Admin:");
       if (!email) return;
@@ -562,28 +714,123 @@
 
       if (sectionsData.length === 0) {
         menu.innerHTML = '<li style="padding: 0.75rem; color: var(--text-muted); font-size: 0.85rem;">Nessuna sezione presente.</li>';
-        return;
+      } else {
+        sectionsData.forEach((sec) => {
+          const li = document.createElement('li');
+          li.className = `menu-item ${sec.id === activeSectionId ? 'active' : ''}`;
+          li.innerText = sec.title;
+          li.onclick = () => {
+            activeSectionId = sec.id;
+            renderSidebar();
+            renderActiveSection();
+          };
+          menu.appendChild(li);
+        });
       }
 
-      sectionsData.forEach((sec) => {
-        const li = document.createElement('li');
-        li.className = `menu-item ${sec.id === activeSectionId ? 'active' : ''}`;
-        li.innerText = sec.title;
-        li.onclick = () => {
-          activeSectionId = sec.id;
-          renderSidebar();
-          renderActiveSection();
-        };
-        menu.appendChild(li);
-      });
+      const calItem = document.getElementById('calendar-menu-item');
+      if (calItem) {
+        if (activeSectionId === "CALENDAR_VIEW") {
+          calItem.classList.add('active');
+        } else {
+          calItem.classList.remove('active');
+        }
+      }
     }
 
+    window.selectCalendarSection = () => {
+      activeSectionId = "CALENDAR_VIEW";
+      renderSidebar();
+      renderActiveSection();
+    };
+
     function renderActiveSection() {
-      const sec = sectionsData.find(s => s.id === activeSectionId);
       const titleEl = document.getElementById('active-section-title');
       const descEl = document.getElementById('active-section-desc');
       const grid = document.getElementById('cards-grid');
+      const addCardBtn = document.getElementById('add-card-btn');
+      const delSecBtn = document.getElementById('delete-sec-btn');
+      const addCalBtn = document.getElementById('add-calendar-event-btn');
+      const cfgCalBtn = document.getElementById('config-calendar-btn');
 
+      // Visualizzazione Calendario
+      if (activeSectionId === "CALENDAR_VIEW") {
+        if (titleEl) titleEl.innerText = "Calendario e Cronologia";
+        if (descEl) descEl.innerText = "Tutti gli eventi storici e le date registrate nel mondo.";
+        if (addCardBtn) addCardBtn.style.display = 'none';
+        if (delSecBtn) delSecBtn.style.display = 'none';
+        if (addCalBtn) addCalBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
+        if (cfgCalBtn) cfgCalBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
+
+        if (grid) {
+          grid.innerHTML = '';
+
+          // Box riassuntivo Nomi Calendario
+          const infoBox = document.createElement('div');
+          infoBox.className = 'calendar-info-badge';
+          infoBox.innerHTML = `
+            <i class="fa-solid fa-compass"></i>
+            <span><strong>Struttura Tempo:</strong> ${calendarSettings.eraName || 'Era Corrente'} | <strong>Mesi:</strong> ${calendarSettings.months || 'Predefiniti'} | <strong>Giorni:</strong> ${calendarSettings.days || 'Predefiniti'}</span>
+          `;
+          grid.appendChild(infoBox);
+          
+          let allEvents = [];
+          sectionsData.forEach(sec => {
+            if (sec.id === "calendar-events") {
+              if (sec.cards && Array.isArray(sec.cards)) {
+                sec.cards.forEach(ev => allEvents.push({ ...ev, source: "Manuale" }));
+              }
+            } else {
+              if (sec.cards && Array.isArray(sec.cards)) {
+                sec.cards.forEach(card => {
+                  if (card.extraFields && Array.isArray(card.extraFields)) {
+                    card.extraFields.forEach(ef => {
+                      if (ef.date) {
+                        allEvents.push({
+                          date: ef.date,
+                          title: ef.label || card.title,
+                          desc: ef.value,
+                          source: `Scheda: ${card.title} (${sec.title})`
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            }
+          });
+
+          if (allEvents.length === 0) {
+            const emptyMsg = document.createElement('p');
+            emptyMsg.style.color = 'var(--text-muted)';
+            emptyMsg.style.fontSize = '0.9rem';
+            emptyMsg.innerText = 'Nessuna data registrata. Aggiungi date nelle sotto-finestre delle schede o crea un evento manuale.';
+            grid.appendChild(emptyMsg);
+            return;
+          }
+
+          const timelineDiv = document.createElement('div');
+          timelineDiv.className = 'timeline-container';
+          
+          allEvents.forEach(ev => {
+            const evBox = document.createElement('div');
+            evBox.className = 'timeline-event-card';
+            evBox.innerHTML = `
+              <div class="timeline-date-badge"><i class="fa-regular fa-calendar"></i> ${ev.date}</div>
+              <h3 style="font-family: 'Cinzel'; color: var(--accent); margin: 0.25rem 0 0.5rem 0; font-size: 1.1rem;">${ev.title}</h3>
+              <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #cbd5e1; white-space: pre-line;">${ev.desc || ''}</p>
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">Fonte: ${ev.source}</div>
+            `;
+            timelineDiv.appendChild(evBox);
+          });
+
+          grid.appendChild(timelineDiv);
+        }
+        return;
+      }
+
+      // Visualizzazione Sezione Normale
+      const sec = sectionsData.find(s => s.id === activeSectionId);
       if (!sec) {
         if (titleEl) titleEl.innerText = "Seleziona una Sezione";
         if (descEl) descEl.innerText = "";
@@ -594,9 +841,14 @@
       if (titleEl) titleEl.innerText = sec.title;
       if (descEl) descEl.innerText = sec.desc || '';
       if (grid) grid.innerHTML = '';
+      if (addCalBtn) addCalBtn.style.display = 'none';
+      if (cfgCalBtn) cfgCalBtn.style.display = 'none';
+      if (addCardBtn) addCardBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
+      if (delSecBtn) delSecBtn.style.display = (currentUserRole !== 'visitor' && sec.id !== 'calendar-events') ? 'inline-flex' : 'none';
 
       let cards = sec.cards || [];
-      
+      if (sec.id === 'calendar-events') return;
+
       if (searchQuery.trim() !== "") {
         const q = searchQuery.toLowerCase();
         cards = cards.filter(c => 
@@ -615,11 +867,15 @@
         let extraFieldsHtml = '';
         if (card.extraFields && Array.isArray(card.extraFields)) {
           card.extraFields.forEach(ef => {
-            if (ef.label && ef.value) {
+            if (ef.label || ef.value) {
+              const dateHtml = ef.date ? `<span class="extra-field-date"><i class="fa-regular fa-calendar"></i> ${ef.date}</span>` : '';
               extraFieldsHtml += `
                 <div class="extra-field-box">
-                  <div class="extra-field-title"><i class="fa-solid fa-bookmark"></i> ${ef.label}</div>
-                  <div style="color: var(--text);">${ef.value}</div>
+                  <div class="extra-field-header">
+                    <span class="extra-field-title"><i class="fa-solid fa-bookmark"></i> ${ef.label || 'Approfondimento'}</span>
+                    ${dateHtml}
+                  </div>
+                  <div style="color: var(--text); white-space: pre-line; line-height: 1.4;">${ef.value || ''}</div>
                 </div>
               `;
             }
@@ -632,7 +888,7 @@
           <img src="${card.img || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500'}" class="card-img" alt="${card.title}">
           <div class="card-body">
             <h3 class="card-title">${card.title}</h3>
-            <p style="margin:0; font-size:0.9rem; color: #cbd5e1; line-height:1.4;">${card.desc}</p>
+            <p style="margin:0; font-size:0.9rem; color: #cbd5e1; line-height:1.4; white-space: pre-line;">${card.desc}</p>
             
             <div class="extra-fields-container">
               ${extraFieldsHtml}
@@ -664,8 +920,6 @@
       const userDisplay = document.getElementById('user-display');
       const roleBanner = document.getElementById('role-banner');
       const addSecBtn = document.getElementById('add-sec-btn');
-      const delSecBtn = document.getElementById('delete-sec-btn');
-      const addCardBtn = document.getElementById('add-card-btn');
       const manageAdminsBtn = document.getElementById('manage-admins-btn');
 
       if (currentUserRole !== "visitor") {
@@ -680,16 +934,12 @@
         }
 
         if (addSecBtn) addSecBtn.style.display = 'inline-flex';
-        if (delSecBtn) delSecBtn.style.display = 'inline-flex';
-        if (addCardBtn) addCardBtn.style.display = 'inline-flex';
         if (manageAdminsBtn) manageAdminsBtn.style.display = (currentUserRole === 'creator') ? 'inline-flex' : 'none';
       } else {
         if (loginBtn) loginBtn.style.display = 'inline-flex';
         if (userInfo) userInfo.style.display = 'none';
         if (roleBanner) roleBanner.style.display = 'none';
         if (addSecBtn) addSecBtn.style.display = 'none';
-        if (delSecBtn) delSecBtn.style.display = 'none';
-        if (addCardBtn) addCardBtn.style.display = 'none';
         if (manageAdminsBtn) manageAdminsBtn.style.display = 'none';
       }
 
@@ -698,7 +948,14 @@
 
     window.openModal = (id) => {
       const modal = document.getElementById(id);
-      if (modal) modal.style.display = 'flex';
+      if (modal) {
+        if (id === 'calendar-config-modal') {
+          document.getElementById('cfg-era-name').value = calendarSettings.eraName || '';
+          document.getElementById('cfg-months-names').value = calendarSettings.months || '';
+          document.getElementById('cfg-days-names').value = calendarSettings.days || '';
+        }
+        modal.style.display = 'flex';
+      }
     };
 
     window.closeModal = (id) => {
@@ -706,15 +963,68 @@
       if (modal) modal.style.display = 'none';
     };
 
-    window.addExtraFieldInput = (label = '', value = '') => {
+    window.saveCalendarConfig = async () => {
+      const eraName = document.getElementById('cfg-era-name').value.trim();
+      const months = document.getElementById('cfg-months-names').value.trim();
+      const days = document.getElementById('cfg-days-names').value.trim();
+
+      const docRef = window.doc(window.firebaseDb, "settings", "calendar");
+      try {
+        await window.setDoc(docRef, { eraName, months, days });
+        closeModal('calendar-config-modal');
+      } catch (e) {
+        alert("Errore salvataggio configurazione: " + e.message);
+      }
+    };
+
+    window.openAddCalendarModal = () => {
+      document.getElementById('cal-event-date').value = '';
+      document.getElementById('cal-event-title').value = '';
+      document.getElementById('cal-event-desc').value = '';
+      openModal('calendar-modal');
+    };
+
+    window.saveCalendarEvent = async () => {
+      const date = document.getElementById('cal-event-date').value.trim();
+      const title = document.getElementById('cal-event-title').value.trim();
+      const desc = document.getElementById('cal-event-desc').value.trim();
+
+      if (!date || !title) {
+        alert("Inserisci almeno una data e un titolo.");
+        return;
+      }
+
+      let calSec = sectionsData.find(s => s.id === "calendar-events");
+      let cards = calSec && calSec.cards ? [...calSec.cards] : [];
+      
+      cards.push({ id: Date.now().toString(), date, title, desc });
+
+      const docRef = window.doc(window.firebaseDb, "sections", "calendar-events");
+      try {
+        await window.setDoc(docRef, {
+          title: "Eventi Storici",
+          desc: "Eventi storici del mondo",
+          cards: cards
+        });
+        closeModal('calendar-modal');
+        selectCalendarSection();
+      } catch (e) {
+        alert("Errore salvataggio evento: " + e.message);
+      }
+    };
+
+    window.addExtraFieldInput = (label = '', value = '', date = '') => {
       const container = document.getElementById('extra-fields-inputs-container');
       if (!container) return;
       const row = document.createElement('div');
       row.className = 'dynamic-field-row';
       row.innerHTML = `
-        <input type="text" placeholder="Etichetta (es. Abilità)" value="${label}" style="flex: 1;" class="ef-label">
-        <input type="text" placeholder="Valore / Descrizione" value="${value}" style="flex: 2;" class="ef-value">
-        <button type="button" class="btn btn-danger" style="padding: 6px 10px;" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" placeholder="Titolo sotto-finestra (es. Storia)" value="${label}" style="flex: 2;" class="ef-label">
+          <input type="text" placeholder="Data (es. Anno 421)" value="${date}" style="flex: 1;" class="ef-date">
+          <button type="button" class="btn btn-danger" style="padding: 4px 10px;" onclick="this.closest('.dynamic-field-row').remove()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <textarea placeholder="Descrizione dettagliata..." rows="2" class="ef-value">${value}</textarea>
       `;
       container.appendChild(row);
     };
@@ -747,7 +1057,7 @@
         container.innerHTML = '';
         if (card.extraFields && Array.isArray(card.extraFields)) {
           card.extraFields.forEach(ef => {
-            window.addExtraFieldInput(ef.label, ef.value);
+            window.addExtraFieldInput(ef.label, ef.value, ef.date);
           });
         }
       }
@@ -767,8 +1077,9 @@
       rows.forEach(row => {
         const label = row.querySelector('.ef-label').value.trim();
         const value = row.querySelector('.ef-value').value.trim();
-        if (label || value) {
-          extraFields.push({ label, value });
+        const date = row.querySelector('.ef-date').value.trim();
+        if (label || value || date) {
+          extraFields.push({ label, value, date });
         }
       });
 
@@ -878,7 +1189,7 @@
     };
 
     window.deleteActiveSection = async () => {
-      if (!activeSectionId) return;
+      if (!activeSectionId || activeSectionId === "CALENDAR_VIEW") return;
       if (!confirm("Eliminare interamente questa sezione?")) return;
       const docRef = window.doc(window.firebaseDb, "sections", activeSectionId);
       try {
