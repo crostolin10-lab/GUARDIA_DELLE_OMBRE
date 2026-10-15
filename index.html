@@ -742,6 +742,7 @@
     let searchQuery = "";
     
     let currentCalendarYear = 1;
+    let currentCalendarMonthIndex = 0;
     
     let calendarSettings = {
       eraName: "Quinta Era",
@@ -1002,6 +1003,10 @@
           `;
           grid.appendChild(infoBox);
 
+          const monthsList = getMonthsList();
+          if (currentCalendarMonthIndex >= monthsList.length) currentCalendarMonthIndex = monthsList.length - 1;
+          if (currentCalendarMonthIndex < 0) currentCalendarMonthIndex = 0;
+
           let allEvents = [];
           sectionsData.forEach(sec => {
             if (sec.id === "calendar-events") {
@@ -1030,22 +1035,32 @@
             }
           });
 
-          const navBar = document.createElement('div');
-          navBar.className = 'calendar-nav-bar';
-          navBar.innerHTML = `
-            <button class="btn btn-secondary" onclick="changeYear(-1)"><i class="fa-solid fa-chevron-left"></i> Anno Precedente</button>
-            <span style="font-family: 'Cinzel'; font-size: 1.2rem; color: var(--accent); font-weight: bold;">${escapeHtml(calendarSettings.eraName || 'Anno')} — ${currentCalendarYear}</span>
-            <button class="btn btn-secondary" onclick="changeYear(1)">Anno Successivo <i class="fa-solid fa-chevron-right"></i></button>
-          `;
-          grid.appendChild(navBar);
-
           const monthsContainer = document.createElement('div');
           monthsContainer.className = 'months-container';
-
-          const monthsList = getMonthsList();
           const daysList = getWeekdaysForGrid();
 
-          monthsList.forEach(monthName => {
+          const yearNavBar = document.createElement('div');
+          yearNavBar.className = 'calendar-nav-bar';
+          yearNavBar.innerHTML = `
+            <button class="btn btn-secondary" onclick="changeYear(-1)" aria-label="Anno precedente"><i class="fa-solid fa-chevron-left"></i> Anno precedente</button>
+            <span style="font-family: 'Cinzel'; font-size: 1.2rem; color: var(--accent); font-weight: bold;">${escapeHtml(calendarSettings.eraName || 'Anno')} — ${currentCalendarYear}</span>
+            <button class="btn btn-secondary" onclick="changeYear(1)" aria-label="Anno successivo">Anno successivo <i class="fa-solid fa-chevron-right"></i></button>
+          `;
+          monthsContainer.appendChild(yearNavBar);
+
+          const selectedMonthName = monthsList[currentCalendarMonthIndex];
+          const monthNavBar = document.createElement('div');
+          monthNavBar.className = 'calendar-nav-bar';
+          monthNavBar.style.marginBottom = '0';
+          monthNavBar.innerHTML = `
+            <button class="btn btn-secondary" onclick="changeMonth(-1)" aria-label="Mese precedente"><i class="fa-solid fa-chevron-left"></i> Mese precedente</button>
+            <span style="font-family: 'Cinzel'; font-size: 1.1rem; color: var(--accent); font-weight: bold;">${escapeHtml(selectedMonthName)}</span>
+            <button class="btn btn-secondary" onclick="changeMonth(1)" aria-label="Mese successivo">Mese successivo <i class="fa-solid fa-chevron-right"></i></button>
+          `;
+          monthsContainer.appendChild(monthNavBar);
+
+          const monthName = selectedMonthName;
+          if (monthName) {
             const monthCard = document.createElement('div');
             monthCard.className = 'month-card';
 
@@ -1116,7 +1131,7 @@
 
             monthCard.appendChild(daysGrid);
             monthsContainer.appendChild(monthCard);
-          });
+          }
 
           grid.appendChild(monthsContainer);
         }
@@ -1205,6 +1220,25 @@
     window.changeYear = (delta) => {
       currentCalendarYear += delta;
       if (currentCalendarYear < 1) currentCalendarYear = 1;
+      renderActiveSection();
+    };
+
+    window.changeMonth = (delta) => {
+      const months = getMonthsList();
+      if (months.length === 0) return;
+
+      currentCalendarMonthIndex += delta;
+      if (currentCalendarMonthIndex >= months.length) {
+        currentCalendarMonthIndex = 0;
+        currentCalendarYear += 1;
+      } else if (currentCalendarMonthIndex < 0) {
+        if (currentCalendarYear > 1) {
+          currentCalendarMonthIndex = months.length - 1;
+          currentCalendarYear -= 1;
+        } else {
+          currentCalendarMonthIndex = 0;
+        }
+      }
       renderActiveSection();
     };
 
