@@ -290,6 +290,1124 @@
       margin-top: 0.5rem;
     }
 
+    .calendar-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+    }
+
+    .months-container {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .month-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+
+    .month-title {
+      font-family: 'Cinzel', serif;
+      color: var(--accent);
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .day-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .day-box:hover {
+      border-color: var(--accent);
+      background: rgba(212, 175, 55, 0.03);
+    }
+
+    .day-box.has-events {
+      border-color: var(--accent);
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    .day-number {
+      font-weight: bold;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .day-name-small {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .day-events-preview {
+      font-size: 0.75rem;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 4px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      padding: 1.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      width: 100%;
+      max-width: 650px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--accent); font-size: 0.85rem; }
+
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 0.65rem;
+      background: #000;
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+    .admin-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #000;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .dynamic-field-row {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <i class="fa-solid fa-shield-halved" style="color: var(--accent); font-size: 1.6rem;"></i>
+      <h1 class="title">La Guardia delle Ombre</h1>
+    </div>
+
+    <!-- BARRA DI RICERCA -->
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="global-search" placeholder="Cerca nel mondo..." oninput="handleSearch()">
+    </div>
+
+    <div id="auth-actions">
+      <button id="login-btn" class="btn" onclick="triggerNativeLogin()">
+        <i class="fa-solid fa-key"></i> Accesso Admin
+      </button>
+
+      <div id="user-info" style="display:none; align-items: center; gap: 0.75rem;">
+        <button id="manage-admins-btn" class="btn btn-purple" style="display:none;" onclick="openModal('manage-admins-modal')">
+          <i class="fa-solid fa-user-gear"></i> Gestisci Admin
+        </button>
+        <span id="user-display" style="color: var(--accent); font-weight: bold; font-size: 0.85rem;"></span>
+        <button class="btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-section-title">
+          <span>Sezioni del Mondo</span>
+          <button id="add-sec-btn" class="btn" style="padding: 2px 6px; font-size: 0.75rem; display:none;" onclick="openModal('add-sec-modal')">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+        <ul id="sections-menu" class="menu-list"></ul>
+        
+        <!-- VOCE FISSA CALENDARIO -->
+        <ul class="menu-list" style="margin-top: 1rem;">
+          <li id="calendar-menu-item" class="menu-item calendar-menu" onclick="selectCalendarSection()">
+            <span><i class="fa-regular fa-calendar-days"></i> Calendario / Cronologia</span>
+          </li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div id="role-banner" style="display:none;"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+          <h2 id="active-section-title" style="font-family: 'Cinzel'; color: var(--accent); margin:0;">Benvenuto</h2>
+          <p id="active-section-desc" style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.85rem;"></p>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+          <button id="delete-sec-btn" class="btn btn-danger" style="display:none; padding: 0.4rem 0.8rem; font-size:0.8rem;" onclick="deleteActiveSection()">
+            <i class="fa-solid fa-trash"></i> Elimina Sezione
+          </button>
+          <button id="add-card-btn" class="btn" style="display:none;" onclick="openAddCardModal()">
+            <i class="fa-solid fa-square-plus"></i> Nuova Scheda
+          </button>
+          <button id="add-calendar-event-btn" class="btn btn-purple" style="display:none;" onclick="openAddCalendarModal()">
+            <i class="fa-solid fa-calendar-plus"></i> Aggiungi Evento
+          </button>
+          <button id="config-calendar-btn" class="btn btn-secondary" style="display:none;" onclick="openModal('calendar-config-modal')">
+            <i class="fa-solid fa-sliders"></i> Configura Calendario
+          </button>
+        </div>
+      </div>
+
+      <div id="cards-grid" class="cards-grid"></div>
+    </main>
+  </div>
+
+  <!-- MODALE DETTAGLI GIORNO -->
+  <div id="day-details-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="day-modal-title" style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Dettagli Giorno</h3>
+      <div id="day-modal-events-list" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;"></div>
+      <div class="modal-actions" style="margin-top: 2rem;">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('day-details-modal')">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE CONFIGURAZIONE STRUTTURA CALENDARIO -->
+  <div id="calendar-config-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Personalizza Nomi Calendario</h3>
+      <p style="font-size:0.85rem; color: var(--text-muted);">Definisci la nomenclatura delle Ere, dei Mesi (separati da virgola) e dei Giorni (separati da virgola).</p>
+
+      <div class="form-group">
+        <label>Nome dell'Era</label>
+        <input type="text" id="cfg-era-name" placeholder="es. Quinta Era">
+      </div>
+      <div class="form-group">
+        <label>Nomi dei Mesi</label>
+        <input type="text" id="cfg-months-names" placeholder="Solaria, Lunaria, Umbralia, Marea">
+      </div>
+      <div class="form-group">
+        <label>Nomi dei Giorni della Settimana</label>
+        <input type="text" id="cfg-days-names" placeholder="Primus, Secundus, Tertius, Quartus, Quintus">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('calendar-config-modal')">Annulla</button>
+        <button class="btn" onclick="saveCalendarConfig()">Salva Configurazione</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE AGGIUNGI EVENTO CALENDARIO MANUALE -->
+  <div id="calendar-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Nuovo Evento nel Calendario</h3>
+      <div class="form-group">
+        <label>Anno (numero)</label>
+        <input type="number" id="cal-event-year" value="1">
+      </div>
+      <div class="form-group">
+        <label>Mese</label>
+        <select id="cal-event-month"></select>
+      </div>
+      <div class="form-group">
+        <label>Giorno (1 - 31)</label>
+        <input type="number" id="cal-event-day" min="1" max="31" value="1">
+      </div>
+      <div class="form-group">
+        <label>Titolo dell'Evento</label>
+        <input type="text" id="cal-event-title" placeholder="es. Fondazione della capitale">
+      </div>
+      <div class="form-group">
+        <label>Descrizione / Dettagli</label>
+        <textarea id="cal-event-desc" rows="3" placeholder="Descrivi l'evento storico..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('calendar-modal')">Annulla</button>
+        <button class="btn" onclick="saveCalendarEvent()">Salva Evento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE CREATORE: GESTIONE ADMIN -->
+  <div id="manage-admins-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Gestione Permessi Amministratori</h3>
+      <div class="form-group">
+        <label>Aggiungi Nuovo Admin (Email)</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="email" id="new-admin-email" placeholder="email@admin.com">
+          <button class="btn" onclick="addAdminRole()">Aggiungi</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Lista Amministratori Attivi</label>
+        <div id="admins-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('manage-admins-modal')">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE ADD SEZIONE -->
+  <div id="add-sec-modal" class="modal">
+    <div class="modal-content">
+      <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Nuova Sezione</h3>
+      <div class="form-group">
+        <label>Titolo Sezione (es. Personaggi, Luoghi)</label>
+        <input type="text" id="sec-title-input">
+      </div>
+      <div class="form-group">
+        <label>Descrizione Breve</label>
+        <input type="text" id="sec-desc-input">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('add-sec-modal')">Annulla</button>
+        <button class="btn" onclick="addSection()">Crea Sezione</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE SCHEDA -->
+  <div id="card-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="card-modal-title" style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Gestione Scheda</h3>
+      <input type="hidden" id="edit-card-index" value="-1">
+      
+      <div class="form-group">
+        <label>Nome / Titolo</label>
+        <input type="text" id="card-title-input">
+      </div>
+      <div class="form-group">
+        <label>URL Immagine principale</label>
+        <input type="text" id="card-img-input" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>Descrizione Principale</label>
+        <textarea id="card-desc-input" rows="3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label style="margin:0;">Sotto-finestre / Descrizioni Extra & Data</label>
+          <button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="addExtraFieldInput('', '', 1, '', 1)">
+            <i class="fa-solid fa-plus"></i> Aggiungi Sotto-finestra
+          </button>
+        </div>
+        <div id="extra-fields-inputs-container"></div>
+      </div>
+
+      <div class="form-group">
+        <label>🔒 Note Segrete (Visibili solo ad Admin e Creatore)</label>
+        <textarea id="card-secret-input" rows="2"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" style="background: transparent; color: var(--text-muted);" onclick="closeModal('card-modal')">Annulla</button>
+        <button class="btn" onclick="saveCard()">Salva su Cloud</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT DI LOGICA E FIREBASE -->
+  <script type="module">
+    let sectionsData = [];
+    let activeSectionId = "PERSONAGGI_DEFAULT";
+    let currentUserRole = "visitor";
+    let currentUserEmail = "";
+    let adminEmailsList = [];
+    let searchQuery = "";
+    
+    let currentCalendarYear = 1;
+    
+    let calendarSettings = {
+      eraName: "Quinta Era",
+      months: "Solaria, Lunaria, Umbralia, Marea",
+      days: "Primus, Secundus, Tertius, Quartus, Quintus"
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.firebaseDb) {
+        const calSettingsRef = window.doc(window.firebaseDb, "settings", "calendar");
+        window.onSnapshot(calSettingsRef, (docSnap) => {
+          if (docSnap.exists()) {
+            calendarSettings = { ...calendarSettings, ...docSnap.data() };
+            if (activeSectionId === "CALENDAR_VIEW") renderActiveSection();
+          }
+        });
+
+        const adminsRef = window.collection(window.firebaseDb, "admins");
+        window.onSnapshot(adminsRef, (snapshot) => {
+          adminEmailsList = [];
+          snapshot.forEach(docSnap => adminEmailsList.push(docSnap.id.toLowerCase()));
+          checkUserRole();
+          renderAdminsList();
+        }, (error) => {
+          console.log("Lettura admins ignorata:", error.message);
+        });
+
+        const sectionsRef = window.collection(window.firebaseDb, "sections");
+        window.onSnapshot(sectionsRef, (snapshot) => {
+          sectionsData = [];
+          snapshot.forEach((docSnap) => {
+            sectionsData.push({ id: docSnap.id, ...docSnap.data() });
+          });
+
+          if (activeSectionId === "PERSONAGGI_DEFAULT" && sectionsData.length > 0) {
+            activeSectionId = sectionsData[0].id;
+          }
+          renderSidebar();
+          renderActiveSection();
+        }, (error) => {
+          console.error("Errore lettura sezioni:", error);
+        });
+      }
+
+      if (window.firebaseAuth) {
+        window.onAuthStateChanged(window.firebaseAuth, (user) => {
+          if (user) {
+            currentUserEmail = user.email.toLowerCase();
+          } else {
+            currentUserEmail = "";
+          }
+          checkUserRole();
+        });
+      }
+    });
+
+    // Funzione Login Nativo Corretta e Affidabile
+    window.triggerNativeLogin = async () => {
+      const email = prompt("Inserisci la tua email Admin:");
+      if (!email) return;
+      const password = prompt("Inserisci la password:");
+      if (!password) return;
+
+      try {
+        await window.signInWithEmailAndPassword(window.firebaseAuth, email.trim(), password);
+        alert("Accesso effettuato con successo!");
+      } catch (e) {
+        alert("Errore di accesso: " + e.message);
+      }
+    };
+
+    function checkUserRole() {
+      if (!currentUserEmail) {
+        currentUserRole = "visitor";
+      } else if (currentUserEmail === window.CREATOR_EMAIL.toLowerCase()) {
+        currentUserRole = "creator";
+      } else if (adminEmailsList.includes(currentUserEmail)) {
+        currentUserRole = "admin";
+      } else {
+        currentUserRole = "visitor";
+      }
+      updateUI();
+    }
+
+    function renderSidebar() {
+      const menu = document.getElementById('sections-menu');
+      if (!menu) return;
+      menu.innerHTML = '';
+
+      if (sectionsData.length === 0) {
+        menu.innerHTML = '<li style="padding: 0.75rem; color: var(--text-muted); font-size: 0.85rem;">Nessuna sezione presente.</li>';
+      } else {
+        sectionsData.forEach((sec) => {
+          const li = document.createElement('li');
+          li.className = `menu-item ${sec.id === activeSectionId ? 'active' : ''}`;
+          li.innerText = sec.title;
+          li.onclick = () => {
+            activeSectionId = sec.id;
+            renderSidebar();
+            renderActiveSection();
+          };
+          menu.appendChild(li);
+        });
+      }
+
+      const calItem = document.getElementById('calendar-menu-item');
+      if (calItem) {
+        if (activeSectionId === "CALENDAR_VIEW") {
+          calItem.classList.add('active');
+        } else {
+          calItem.classList.remove('active');
+        }
+      }
+    }
+
+    window.selectCalendarSection = () => {
+      activeSectionId = "CALENDAR_VIEW";
+      renderSidebar();
+      renderActiveSection();
+    };
+
+    function getMonthsList() {
+      if (!calendarSettings.months) return ["Solaria", "Lunaria", "Umbralia", "Marea"];
+      return calendarSettings.months.split(',').map(m => m.trim()).filter(Boolean);
+    }
+
+    function getDaysList() {
+      if (!calendarSettings.days) return ["Primus", "Secundus", "Tertius", "Quartus", "Quintus"];
+      return calendarSettings.days.split(',').map(d => d.trim()).filter(Boolean);
+    }
+
+    function renderActiveSection() {
+      const titleEl = document.getElementById('active-section-title');
+      const descEl = document.getElementById('active-section-desc');
+      const grid = document.getElementById('cards-grid');
+      const addCardBtn = document.getElementById('add-card-btn');
+      const delSecBtn = document.getElementById('delete-sec-btn');
+      const addCalBtn = document.getElementById('add-calendar-event-btn');
+      const cfgCalBtn = document.getElementById('config-calendar-btn');
+
+      if (activeSectionId === "CALENDAR_VIEW") {
+        if (titleEl) titleEl.innerText = "Calendario e Cronologia";
+        if (descEl) descEl.innerText = `Gestione temporale del mondo (${calendarSettings.eraName || 'Era Corrente'})`;
+        if (addCardBtn) addCardBtn.style.display = 'none';
+        if (delSecBtn) delSecBtn.style.display = 'none';
+        if (addCalBtn) addCalBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
+        if (cfgCalBtn) cfgCalBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
+
+        if (grid) {
+          grid.innerHTML = '';
+
+          const infoBox = document.createElement('div');
+          infoBox.className = 'calendar-nav-bar';
+          infoBox.style.marginBottom = '1rem';
+          infoBox.innerHTML = `
+            <span style="color: var(--accent); font-size: 0.85rem;"><i class="fa-solid fa-compass"></i> <strong>Struttura:</strong> Mesi (${getMonthsList().length}) | Giorni ciclo (${getDaysList().length})</span>
+          `;
+          grid.appendChild(infoBox);
+
+          let allEvents = [];
+          sectionsData.forEach(sec => {
+            if (sec.id === "calendar-events") {
+              if (sec.cards && Array.isArray(sec.cards)) {
+                sec.cards.forEach(ev => allEvents.push({ ...ev, source: "Manuale" }));
+              }
+            } else {
+              if (sec.cards && Array.isArray(sec.cards)) {
+                sec.cards.forEach(card => {
+                  if (card.extraFields && Array.isArray(card.extraFields)) {
+                    card.extraFields.forEach(ef => {
+                      if (ef.year && ef.month && ef.day) {
+                        allEvents.push({
+                          year: parseInt(ef.year),
+                          month: ef.month,
+                          day: parseInt(ef.day),
+                          title: ef.label || card.title,
+                          desc: ef.value,
+                          source: `Scheda: ${card.title} (${sec.title})`
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            }
+          });
+
+          const navBar = document.createElement('div');
+          navBar.className = 'calendar-nav-bar';
+          navBar.innerHTML = `
+            <button class="btn btn-secondary" onclick="changeYear(-1)"><i class="fa-solid fa-chevron-left"></i> Anno Precedente</button>
+            <span style="font-family: 'Cinzel'; font-size: 1.2rem; color: var(--accent); font-weight: bold;">${calendarSettings.eraName || 'Anno'} — ${currentCalendarYear}</span>
+            <button class="btn btn-secondary" onclick="changeYear(1)">Anno Successivo <i class="fa-solid fa-chevron-right"></i></button>
+          `;
+          grid.appendChild(navBar);
+
+          const monthsContainer = document.createElement('div');
+          monthsContainer.className = 'months-container';
+
+          const monthsList = getMonthsList();
+          const daysList = getDaysList();
+
+          monthsList.forEach(monthName => {
+            const monthCard = document.createElement('div');
+            monthCard.className = 'month-card';
+
+            const mTitle = document.createElement('div');
+            mTitle.className = 'month-title';
+            mTitle.innerHTML = `<i class="fa-solid fa-moon"></i> Mese di ${monthName}`;
+            monthCard.appendChild(mTitle);
+
+            const daysGrid = document.createElement('div');
+            daysGrid.className = 'days-grid';
+
+            for (let d = 1; d <= 31; d++) {
+              const dayNameIndex = (d - 1) % daysList.length;
+              const currentDayName = daysList[dayNameIndex];
+
+              const dayEvents = allEvents.filter(ev => ev.year === currentCalendarYear && ev.month === monthName && ev.day === d);
+              const hasEvents = dayEvents.length > 0;
+
+              const dayBox = document.createElement('div');
+              dayBox.className = `day-box ${hasEvents ? 'has-events' : ''}`;
+              
+              let previewHtml = '';
+              if (hasEvents) {
+                previewHtml = `<div class="day-events-preview"><i class="fa-solid fa-star"></i> ${dayEvents[0].title}</div>`;
+              }
+
+              dayBox.innerHTML = `
+                <div>
+                  <div class="day-number">${d}</div>
+                  <div class="day-name-small">${currentDayName}</div>
+                </div>
+                ${previewHtml}
+              `;
+
+              dayBox.onclick = () => openDayDetailsModal(currentCalendarYear, monthName, d, dayEvents);
+              daysGrid.appendChild(dayBox);
+            }
+
+            monthCard.appendChild(daysGrid);
+            monthsContainer.appendChild(monthCard);
+          });
+
+          grid.appendChild(monthsContainer);
+        }
+        return;
+      }
+
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec) {
+        if (titleEl) titleEl.innerText = "Seleziona una Sezione";
+        if (descEl) descEl.innerText = "";
+        if (grid) grid.innerHTML = "";
+        return;
+      }
+
+      if (titleEl) titleEl.innerText = sec.title;
+      if (descEl) descEl.innerText = sec.desc || '';
+      if (grid) grid.innerHTML = '';
+      if (addCalBtn) addCalBtn.style.display = 'none';
+      if (cfgCalBtn) cfgCalBtn.style.display = 'none';
+      if (addCardBtn) addCardBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
+      if (delSecBtn) delSecBtn.style.display = (currentUserRole !== 'visitor' && sec.id !== 'calendar-events') ? 'inline-flex' : 'none';
+
+      let cards = sec.cards || [];
+      if (sec.id === 'calendar-events') return;
+
+      if (searchQuery.trim() !== "") {
+        const q = searchQuery.toLowerCase();
+        cards = cards.filter(c => 
+          (c.title && c.title.toLowerCase().includes(q)) || 
+          (c.desc && c.desc.toLowerCase().includes(q)) || 
+          (currentUserRole !== 'visitor' && c.secret && c.secret.toLowerCase().includes(q))
+        );
+      }
+
+      if (cards.length === 0) {
+        if (grid) grid.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessuna scheda trovata.</p>';
+        return;
+      }
+
+      cards.forEach((card, cardIdx) => {
+        let extraFieldsHtml = '';
+        if (card.extraFields && Array.isArray(card.extraFields)) {
+          card.extraFields.forEach(ef => {
+            if (ef.label || ef.value) {
+              const dateStr = ef.year ? `Giorno ${ef.day} di ${ef.month}, Anno ${ef.year}` : '';
+              const dateHtml = dateStr ? `<span class="extra-field-date"><i class="fa-regular fa-calendar"></i> ${dateStr}</span>` : '';
+              extraFieldsHtml += `
+                <div class="extra-field-box">
+                  <div class="extra-field-header">
+                    <span class="extra-field-title"><i class="fa-solid fa-bookmark"></i> ${ef.label || 'Approfondimento'}</span>
+                    ${dateHtml}
+                  </div>
+                  <div style="color: var(--text); white-space: pre-line; line-height: 1.4;">${ef.value || ''}</div>
+                </div>
+              `;
+            }
+          });
+        }
+
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card';
+        cardDiv.innerHTML = `
+          <img src="${card.img || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500'}" class="card-img" alt="${card.title}">
+          <div class="card-body">
+            <h3 class="card-title">${card.title}</h3>
+            <p style="margin:0; font-size:0.9rem; color: #cbd5e1; line-height:1.4; white-space: pre-line;">${card.desc}</p>
+            
+            <div class="extra-fields-container">
+              ${extraFieldsHtml}
+            </div>
+
+            ${currentUserRole !== 'visitor' && card.secret ? `<div class="secret-box"><strong>🔒 Note Segrete:</strong> ${card.secret}</div>` : ''}
+            
+            ${currentUserRole !== 'visitor' ? `
+              <div class="card-actions">
+                <button class="btn btn-secondary" style="font-size:0.75rem; padding: 4px 8px;" onclick="openEditCardModal(${cardIdx})"><i class="fa-solid fa-pen"></i> Modifica</button>
+                <button class="btn btn-danger" style="font-size:0.75rem; padding: 4px 8px;" onclick="deleteCard(${cardIdx})"><i class="fa-solid fa-trash"></i> Elimina</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        grid.appendChild(cardDiv);
+      });
+    }
+
+    window.changeYear = (delta) => {
+      currentCalendarYear += delta;
+      if (currentCalendarYear < 1) currentCalendarYear = 1;
+      renderActiveSection();
+    };
+
+    window.openDayDetailsModal = (year, month, day, events) => {
+      document.getElementById('day-modal-title').innerText = `Giorno ${day} di ${month} (Anno ${year})`;
+      const listDiv = document.getElementById('day-modal-events-list');
+      listDiv.innerHTML = '';
+
+      if (events.length === 0) {
+        listDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessun evento registrato in questa data.</p>';
+      } else {
+        events.forEach(ev => {
+          const item = document.createElement('div');
+          item.style.background = '#000';
+          item.style.border = '1px solid var(--border)';
+          item.style.padding = '1rem';
+          item.style.borderRadius = '6px';
+          item.innerHTML = `
+            <h4 style="font-family: 'Cinzel'; color: var(--accent); margin: 0 0 0.5rem 0; font-size: 1rem;">${ev.title}</h4>
+            <p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: var(--text); white-space: pre-line;">${ev.desc || 'Nessuna descrizione.'}</p>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">Fonte: ${ev.source}</div>
+          `;
+          listDiv.appendChild(item);
+        });
+      }
+
+      openModal('day-details-modal');
+    };
+
+    window.handleSearch = () => {
+      const input = document.getElementById('global-search');
+      searchQuery = input ? input.value : "";
+      renderActiveSection();
+    };
+
+    function updateUI() {
+      const loginBtn = document.getElementById('login-btn');
+      const userInfo = document.getElementById('user-info');
+      const userDisplay = document.getElementById('user-display');
+      const roleBanner = document.getElementById('role-banner');
+      const addSecBtn = document.getElementById('add-sec-btn');
+      const manageAdminsBtn = document.getElementById('manage-admins-btn');
+
+      if (currentUserRole !== "visitor") {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (userInfo) userInfo.style.display = 'flex';
+        if (userDisplay) userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
+
+        if (roleBanner) {
+          roleBanner.className = `status-banner ${currentUserRole}`;
+          roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Accesso <strong>${currentUserRole.toUpperCase()}</strong> attivo.`;
+          roleBanner.style.display = 'flex';
+        }
+
+        if (addSecBtn) addSecBtn.style.display = 'inline-flex';
+        if (manageAdminsBtn) manageAdminsBtn.style.display = (currentUserRole === 'creator') ? 'inline-flex' : 'none';
+      } else {
+        if (loginBtn) loginBtn.style.display = 'inline-flex';
+        if (userInfo) userInfo.style.display = 'none';
+        if (roleBanner) roleBanner.style.display = 'none';
+        if (addSecBtn) addSecBtn.style.display = 'none';
+        if (manageAdminsBtn) manageAdminsBtn.style.display = 'none';
+      }
+
+      renderActiveSection();
+    }
+
+    window.openModal = (id) => {
+      const modal = document.getElementById(id);
+      if (modal) {
+        if (id === 'calendar-config-modal') {
+          document.getElementById('cfg-era-name').value = calendarSettings.eraName || '';
+          document.getElementById('cfg-months-names').value = calendarSettings.months || '';
+          document.getElementById('cfg-days-names').value = calendarSettings.days || '';
+        }
+        modal.style.display = 'flex';
+      }
+    };
+
+    window.closeModal = (id) => {
+      const modal = document.getElementById(id);
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.saveCalendarConfig = async () => {
+      const eraName = document.getElementById('cfg-era-name').value.trim();
+      const months = document.getElementById('cfg-months-names').value.trim();
+      const days = document.getElementById('cfg-days-names').value.trim();
+
+      const docRef = window.doc(window.firebaseDb, "settings", "calendar");
+      try {
+        await window.setDoc(docRef, { eraName, months, days });
+        closeModal('calendar-config-modal');
+      } catch (e) {
+        alert("Errore salvataggio configurazione: " + e.message);
+      }
+    };
+
+    function populateMonthSelect(selectId, selectedVal = '') {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      select.innerHTML = '';
+      const months = getMonthsList();
+      months.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.innerText = m;
+        if (m === selectedVal) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    window.open<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Guardia delle Ombre - Enciclopedia Fantasy</title>
+  
+  <!-- Font Google & FontAwesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase SDK Modules -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ⚠️ INCOLLA QUI LE TUE CHIAVI COPIATE DA FIREBASE
+    const firebaseConfig = {
+  apiKey: "AIzaSyD7CGKwtDjsXtd876odKtgo8wRIikbbae0",
+  authDomain: "la-guardia-delle-ombre-adf24.firebaseapp.com",
+  projectId: "la-guardia-delle-ombre-adf24",
+  storageBucket: "la-guardia-delle-ombre-adf24.firebasestorage.app",
+  messagingSenderId: "152288534171",
+  appId: "1:152288534171:web:825689c6bb1972709d303e"
+    };
+
+    // ⚠️ INSERISCI QUI LA TUA EMAIL PERSONALE (CREATORE)
+    const CREATOR_EMAIL = "schena.g2010@gmail.com";
+
+    let app, auth, db;
+    try {
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+    } catch (e) {
+      console.warn("Firebase non inizializzato:", e);
+    }
+
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.CREATOR_EMAIL = CREATOR_EMAIL;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.signOut = signOut;
+    window.onAuthStateChanged = onAuthStateChanged;
+    window.doc = doc;
+    window.setDoc = setDoc;
+    window.deleteDoc = deleteDoc;
+    window.collection = collection;
+    window.onSnapshot = onSnapshot;
+  </script>
+
+  <style>
+    :root {
+      --bg-main: #090a0f;
+      --bg-card: #131620;
+      --bg-sidebar: #0f111a;
+      --accent: #d4af37;
+      --accent-hover: #f3e5ab;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border: #2a2f42;
+      --admin-badge: #ef4444;
+      --creator-badge: #9333ea;
+      --secret-bg: rgba(239, 68, 68, 0.08);
+      --secret-border: #7f1d1d;
+      --extra-field-bg: rgba(212, 175, 55, 0.05);
+      --extra-field-border: #3a3f58;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg-main);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 1rem;
+    }
+
+    .brand { display: flex; align-items: center; gap: 1rem; }
+
+    h1.title {
+      font-family: 'Cinzel', serif;
+      color: var(--accent);
+      margin: 0;
+      font-size: 1.6rem;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.5rem 1rem 0.5rem 2.5rem;
+      background: #000;
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 20px;
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    .search-box input:focus { border-color: var(--accent); }
+
+    .search-box i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn:hover { background: var(--accent-hover); }
+    .btn-secondary { background: #334155; color: #fff; }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #ef4444; }
+    .btn-purple { background: #9333ea; color: #fff; }
+    .btn-purple:hover { background: #a855f7; }
+
+    .app-container { display: flex; flex: 1; }
+
+    aside.sidebar {
+      width: 280px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .sidebar-section-title {
+      font-family: 'Cinzel', serif;
+      color: var(--accent);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-list { list-style: none; padding: 0; margin: 0; }
+
+    .menu-item {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .menu-item:hover, .menu-item.active {
+      background: rgba(212, 175, 55, 0.1);
+      color: var(--accent);
+    }
+
+    .menu-item.calendar-menu {
+      border: 1px dashed var(--accent);
+      color: var(--accent);
+      margin-top: 1rem;
+    }
+
+    main.content { flex: 1; padding: 2rem; overflow-y: auto; }
+
+    .status-banner {
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .status-banner.admin { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--admin-badge); color: #fca5a5; }
+    .status-banner.creator { background: rgba(147, 51, 234, 0.1); border: 1px solid var(--creator-badge); color: #d8b4fe; }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .card-img { height: 180px; width: 100%; object-fit: cover; background: #1a1d2d; }
+    .card-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
+    .card-title { font-family: 'Cinzel', serif; color: var(--accent); margin: 0; font-size: 1.2rem; }
+    .card-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+
+    .extra-fields-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .extra-field-box {
+      background: var(--extra-field-bg);
+      border: 1px solid var(--extra-field-border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .extra-field-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
+    }
+
+    .extra-field-title {
+      font-weight: bold;
+      color: var(--accent);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .extra-field-date {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .secret-box {
+      background: var(--secret-bg);
+      border: 1px dashed var(--secret-border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #fca5a5;
+      margin-top: 0.5rem;
+    }
+
     /* Grafica Calendario Interattivo */
     .calendar-nav-bar {
       display: flex;
