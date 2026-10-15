@@ -299,40 +299,52 @@
       margin-bottom: 1.5rem;
     }
 
-    .months-container {
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-    }
+    .months-container { display: flex; flex-direction: column; gap: 1.5rem; }
 
     .month-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 1.25rem;
+      padding: 1rem;
     }
 
     .month-title {
       font-family: 'Cinzel', serif;
       color: var(--accent);
       font-size: 1.1rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
       border-bottom: 1px solid var(--border);
       padding-bottom: 0.5rem;
     }
 
+    .calendar-weekdays,
     .days-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 0.75rem;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 0.35rem;
+    }
+
+    .calendar-weekdays {
+      margin-bottom: 0.35rem;
+      text-align: center;
+    }
+
+    .calendar-weekday {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.45rem 0.15rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .day-box {
       background: #000;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 0.6rem;
-      min-height: 80px;
+      padding: 0.45rem;
+      min-width: 0;
+      min-height: 72px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -340,9 +352,12 @@
       transition: all 0.2s;
     }
 
-    .day-box:hover {
+    .day-box:hover,
+    .day-box:focus-visible {
       border-color: var(--accent);
       background: rgba(212, 175, 55, 0.03);
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
     }
 
     .day-box.has-events {
@@ -365,10 +380,63 @@
     .day-events-preview {
       font-size: 0.75rem;
       color: var(--accent);
-      white-space: nowrap;
+      white-space: normal;
       overflow: hidden;
       text-overflow: ellipsis;
       margin-top: 4px;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+    }
+
+    .month-length-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .month-length-field label {
+      display: block;
+      margin-bottom: 0.4rem;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      .calendar-nav-bar { gap: 0.5rem; padding: 0.75rem; }
+      .calendar-nav-bar .btn { padding: 0.45rem 0.55rem; font-size: 0.75rem; }
+      .month-card { padding: 0.6rem; }
+      .calendar-weekdays, .days-grid { gap: 0.2rem; }
+      .calendar-weekday { font-size: 0.58rem; padding: 0.35rem 0; }
+      .day-box { min-height: 52px; padding: 0.3rem; border-radius: 4px; }
+      .day-number { font-size: 0.85rem; }
+      .day-name-small { display: none; }
+      .day-events-preview { font-size: 0.6rem; }
+    }
+
+    @media (max-width: 760px) {
+      header { flex-wrap: wrap; padding: 0.75rem 1rem; }
+      h1.title { font-size: 1.2rem; white-space: normal; }
+      .search-box { order: 3; flex-basis: 100%; max-width: none; }
+      .app-container { flex-direction: column; }
+      aside.sidebar {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      #sections-menu,
+      aside.sidebar > div > ul:last-child {
+        display: flex;
+        gap: 0.25rem;
+        overflow-x: auto;
+      }
+      .menu-item { white-space: nowrap; }
+      main.content { padding: 1rem; overflow: visible; }
+      main.content > div:nth-child(2) { flex-wrap: wrap; gap: 0.75rem; }
+      main.content > div:nth-child(2) > div:last-child { flex-wrap: wrap; }
     }
 
     .modal {
@@ -534,11 +602,15 @@
       </div>
       <div class="form-group">
         <label>Nomi dei Mesi</label>
-        <input type="text" id="cfg-months-names" placeholder="Solaria, Lunaria, Umbralia, Marea">
+        <input type="text" id="cfg-months-names" placeholder="Solaria, Lunaria, Umbralia, Marea" oninput="renderMonthLengthInputs()">
       </div>
       <div class="form-group">
         <label>Nomi dei Giorni della Settimana</label>
         <input type="text" id="cfg-days-names" placeholder="Primus, Secundus, Tertius, Quartus, Quintus">
+      </div>
+      <div class="form-group">
+        <label>Giorni per ogni mese (da 1 a 366)</label>
+        <div id="cfg-month-length-fields" class="month-length-fields"></div>
       </div>
 
       <div class="modal-actions">
@@ -558,11 +630,11 @@
       </div>
       <div class="form-group">
         <label>Mese</label>
-        <select id="cal-event-month"></select>
+        <select id="cal-event-month" onchange="updateCalendarEventDayLimit()"></select>
       </div>
       <div class="form-group">
         <label>Giorno (1 - 31)</label>
-        <input type="number" id="cal-event-day" min="1" max="31" value="1">
+        <input type="number" id="cal-event-day" min="1" value="1">
       </div>
       <div class="form-group">
         <label>Titolo dell'Evento</label>
@@ -674,7 +746,13 @@
     let calendarSettings = {
       eraName: "Quinta Era",
       months: "Solaria, Lunaria, Umbralia, Marea",
-      days: "Primus, Secundus, Tertius, Quartus, Quintus"
+      days: "Primus, Secundus, Tertius, Quartus, Quintus",
+      monthLengths: {
+        Solaria: 31,
+        Lunaria: 31,
+        Umbralia: 31,
+        Marea: 31
+      }
     };
 
     function escapeHtml(value) {
@@ -823,6 +901,79 @@
       return calendarSettings.days.split(',').map(d => d.trim()).filter(Boolean);
     }
 
+    function getWeekdaysForGrid() {
+      const configured = getDaysList();
+      const fallback = ["Primus", "Secundus", "Tertius", "Quartus", "Quintus", "Sextus", "Septimus"];
+      return Array.from({ length: 7 }, (_, index) => configured[index] || fallback[index]);
+    }
+
+    function getMonthLength(monthName, lengths = calendarSettings.monthLengths) {
+      const value = Number(lengths && lengths[monthName]);
+      return Number.isInteger(value) && value >= 1 && value <= 366 ? value : 31;
+    }
+
+    function getYearLength(months = getMonthsList(), lengths = calendarSettings.monthLengths) {
+      return months.reduce((total, monthName) => total + getMonthLength(monthName, lengths), 0);
+    }
+
+    window.renderMonthLengthInputs = () => {
+      const container = document.getElementById("cfg-month-length-fields");
+      const monthsInput = document.getElementById("cfg-months-names");
+      if (!container || !monthsInput) return;
+
+      const currentValues = {};
+      container.querySelectorAll("input[data-month-name]").forEach(input => {
+        currentValues[input.dataset.monthName] = input.value;
+      });
+      const months = [...new Set(monthsInput.value.split(",").map(name => name.trim()).filter(Boolean))];
+      container.innerHTML = "";
+
+      months.forEach(monthName => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "month-length-field";
+        const label = document.createElement("label");
+        const inputId = `month-length-${container.children.length}`;
+        label.htmlFor = inputId;
+        label.textContent = monthName;
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.id = inputId;
+        input.min = "1";
+        input.max = "366";
+        input.step = "1";
+        input.dataset.monthName = monthName;
+        input.value = currentValues[monthName] || String(getMonthLength(monthName));
+        input.required = true;
+
+        wrapper.append(label, input);
+        container.appendChild(wrapper);
+      });
+
+      if (months.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); margin:0;">Inserisci prima almeno un mese.</p>';
+      }
+    };
+
+    function findInvalidCalendarEvents(months, monthLengths) {
+      const errors = [];
+      sectionsData.forEach(section => {
+        const cards = Array.isArray(section.cards) ? section.cards : [];
+        cards.forEach(item => {
+          const events = section.id === "calendar-events" ? [item] : (Array.isArray(item.extraFields) ? item.extraFields : []);
+          events.forEach(event => {
+            if (!event || !event.month || !event.day) return;
+            const monthName = String(event.month);
+            const day = Number(event.day);
+            if (months.includes(monthName) && (!Number.isInteger(day) || day < 1 || day > getMonthLength(monthName, monthLengths))) {
+              errors.push(`${event.title || event.label || item.title || "Evento"}: ${monthName} ${event.day}`);
+            }
+          });
+        });
+      });
+      return errors;
+    }
+
     function renderActiveSection() {
       const titleEl = document.getElementById('active-section-title');
       const descEl = document.getElementById('active-section-desc');
@@ -847,7 +998,7 @@
           infoBox.className = 'calendar-nav-bar';
           infoBox.style.marginBottom = '1rem';
           infoBox.innerHTML = `
-            <span style="color: var(--accent); font-size: 0.85rem;"><i class="fa-solid fa-compass"></i> <strong>Struttura:</strong> Mesi (${getMonthsList().length}) | Giorni ciclo (${getDaysList().length})</span>
+            <span style="color: var(--accent); font-size: 0.85rem;"><i class="fa-solid fa-compass"></i> <strong>Struttura:</strong> Mesi (${getMonthsList().length}) | Giorni settimana (${getWeekdaysForGrid().length})</span>
           `;
           grid.appendChild(infoBox);
 
@@ -892,7 +1043,7 @@
           monthsContainer.className = 'months-container';
 
           const monthsList = getMonthsList();
-          const daysList = getDaysList();
+          const daysList = getWeekdaysForGrid();
 
           monthsList.forEach(monthName => {
             const monthCard = document.createElement('div');
@@ -900,21 +1051,46 @@
 
             const mTitle = document.createElement('div');
             mTitle.className = 'month-title';
-            mTitle.innerHTML = `<i class="fa-solid fa-moon"></i> Mese di ${escapeHtml(monthName)}`;
+            const monthLength = getMonthLength(monthName);
+            mTitle.innerHTML = `<i class="fa-solid fa-moon"></i> Mese di ${escapeHtml(monthName)} <span style="float:right; color:var(--text-muted); font-family:'Inter',sans-serif; font-size:0.78rem;">${monthLength} giorni</span>`;
             monthCard.appendChild(mTitle);
+
+            const weekdaysHeader = document.createElement('div');
+            weekdaysHeader.className = 'calendar-weekdays';
+            weekdaysHeader.setAttribute('aria-label', 'Giorni della settimana');
+            daysList.forEach(dayName => {
+              const weekday = document.createElement('div');
+              weekday.className = 'calendar-weekday';
+              weekday.textContent = dayName;
+              weekdaysHeader.appendChild(weekday);
+            });
+            monthCard.appendChild(weekdaysHeader);
 
             const daysGrid = document.createElement('div');
             daysGrid.className = 'days-grid';
 
-            for (let d = 1; d <= 31; d++) {
-              const dayNameIndex = (d - 1) % daysList.length;
-              const currentDayName = daysList[dayNameIndex];
+            const daysBeforeYear = Math.max(0, currentCalendarYear - 1) * getYearLength(monthsList);
+            const monthIndex = monthsList.indexOf(monthName);
+            const daysBeforeMonth = monthsList
+              .slice(0, monthIndex)
+              .reduce((total, name) => total + getMonthLength(name), 0);
+            const monthStartWeekday = (daysBeforeYear + daysBeforeMonth) % 7;
+            for (let blank = 0; blank < monthStartWeekday; blank++) {
+              const emptyCell = document.createElement('div');
+              emptyCell.className = 'calendar-day-empty';
+              emptyCell.setAttribute('aria-hidden', 'true');
+              daysGrid.appendChild(emptyCell);
+            }
 
+            for (let d = 1; d <= monthLength; d++) {
               const dayEvents = allEvents.filter(ev => ev.year === currentCalendarYear && ev.month === monthName && ev.day === d);
               const hasEvents = dayEvents.length > 0;
 
               const dayBox = document.createElement('div');
               dayBox.className = `day-box ${hasEvents ? 'has-events' : ''}`;
+              dayBox.setAttribute('role', 'button');
+              dayBox.setAttribute('tabindex', '0');
+              dayBox.setAttribute('aria-label', `${daysList[(monthStartWeekday + d - 1) % 7]}, ${d} ${monthName}${hasEvents ? `, ${dayEvents.length} eventi` : ''}`);
               
               let previewHtml = '';
               if (hasEvents) {
@@ -924,12 +1100,17 @@
               dayBox.innerHTML = `
                 <div>
                   <div class="day-number">${d}</div>
-                  <div class="day-name-small">${escapeHtml(currentDayName)}</div>
                 </div>
                 ${previewHtml}
               `;
 
               dayBox.onclick = () => openDayDetailsModal(currentCalendarYear, monthName, d, dayEvents);
+              dayBox.onkeydown = (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openDayDetailsModal(currentCalendarYear, monthName, d, dayEvents);
+                }
+              };
               daysGrid.appendChild(dayBox);
             }
 
@@ -1098,6 +1279,7 @@
           document.getElementById('cfg-era-name').value = calendarSettings.eraName || '';
           document.getElementById('cfg-months-names').value = calendarSettings.months || '';
           document.getElementById('cfg-days-names').value = calendarSettings.days || '';
+          window.renderMonthLengthInputs();
         }
         modal.style.display = 'flex';
       }
@@ -1112,10 +1294,45 @@
       const eraName = document.getElementById('cfg-era-name').value.trim();
       const months = document.getElementById('cfg-months-names').value.trim();
       const days = document.getElementById('cfg-days-names').value.trim();
+      const rawMonthsList = months.split(',').map(name => name.trim()).filter(Boolean);
+      const monthsList = [...new Set(rawMonthsList)];
+      const monthLengths = {};
+
+      if (monthsList.length === 0) {
+        alert("Inserisci almeno un nome di mese.");
+        return;
+      }
+      if (monthsList.length !== rawMonthsList.length) {
+        alert("Ogni mese deve avere un nome univoco.");
+        return;
+      }
+
+      document.querySelectorAll("#cfg-month-length-fields input[data-month-name]").forEach(input => {
+        monthLengths[input.dataset.monthName] = Number(input.value);
+      });
+
+      const invalidLength = monthsList.find(name => !Number.isInteger(monthLengths[name]) || monthLengths[name] < 1 || monthLengths[name] > 366);
+      if (invalidLength) {
+        alert(`Il mese "${invalidLength}" deve avere da 1 a 366 giorni.`);
+        return;
+      }
+
+      const invalidEvents = findInvalidCalendarEvents(monthsList, monthLengths);
+      if (invalidEvents.length > 0) {
+        alert(`La modifica renderebbe non validi alcuni eventi. Spostali o correggili prima di ridurre la durata dei mesi:\n${invalidEvents.slice(0, 5).join("\n")}`);
+        return;
+      }
+
+      if (!window.firebaseDb) {
+        alert("Firebase non è disponibile: impossibile salvare la configurazione.");
+        return;
+      }
 
       const docRef = window.doc(window.firebaseDb, "settings", "calendar");
       try {
-        await window.setDoc(docRef, { eraName, months, days });
+        await window.setDoc(docRef, { eraName, months, days, monthLengths });
+        calendarSettings = { eraName, months, days, monthLengths };
+        renderActiveSection();
         closeModal('calendar-config-modal');
       } catch (e) {
         alert("Errore salvataggio configurazione: " + e.message);
@@ -1134,7 +1351,17 @@
         if (m === selectedVal) opt.selected = true;
         select.appendChild(opt);
       });
+      if (selectId === "cal-event-month") updateCalendarEventDayLimit();
     }
+
+    window.updateCalendarEventDayLimit = () => {
+      const monthSelect = document.getElementById("cal-event-month");
+      const dayInput = document.getElementById("cal-event-day");
+      if (!monthSelect || !dayInput) return;
+      const maxDay = getMonthLength(monthSelect.value);
+      dayInput.max = String(maxDay);
+      if (Number(dayInput.value) > maxDay) dayInput.value = String(maxDay);
+    };
 
     window.openAddCardModal = () => {
       if (currentUserRole === "visitor" || activeSectionId === "CALENDAR_VIEW") return;
@@ -1191,7 +1418,7 @@
       const dayInput = document.createElement("input");
       dayInput.type = "number";
       dayInput.min = "1";
-      dayInput.max = "31";
+      dayInput.max = "366";
       dayInput.placeholder = "Giorno";
       dayInput.value = day;
 
@@ -1237,6 +1464,22 @@
           };
         })
         .filter(field => field.label || field.value || field.month || field.day || field.year);
+
+      const invalidDate = extraFields.find(field => {
+        if (!field.year && !field.month && !field.day) return false;
+        const day = Number(field.day);
+        const year = Number(field.year);
+        return !getMonthsList().includes(field.month)
+          || !Number.isInteger(day)
+          || day < 1
+          || day > getMonthLength(field.month)
+          || !Number.isInteger(year)
+          || year < 1;
+      });
+      if (invalidDate) {
+        alert("Controlla la data della sotto-finestra: scegli un mese valido, un giorno presente nel mese e un anno maggiore di zero.");
+        return;
+      }
 
       const card = {
         title,
@@ -1339,7 +1582,7 @@
       const title = document.getElementById("cal-event-title").value.trim();
       const desc = document.getElementById("cal-event-desc").value.trim();
 
-      if (!Number.isInteger(year) || year < 1 || !Number.isInteger(day) || day < 1 || day > 31 || !month || !title) {
+      if (!Number.isInteger(year) || year < 1 || !Number.isInteger(day) || day < 1 || day > getMonthLength(month) || !month || !title) {
         alert("Controlla anno, mese, giorno e titolo dell'evento.");
         return;
       }
