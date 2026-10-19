@@ -292,8 +292,6 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 1rem;
       background: var(--bg-card);
       border: 1px solid var(--border);
       padding: 1rem 1.5rem;
@@ -301,17 +299,44 @@
       margin-bottom: 1.5rem;
     }
 
-    .calendar-controls-group {
+    .cards-grid.calendar-layout {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      width: 100%;
       gap: 0.75rem;
     }
+
+    .calendar-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .calendar-nav-bar.calendar-nav-group {
+      gap: 0.75rem;
+      margin: 0;
+      min-width: 0;
+      padding: 0.75rem 1rem;
+    }
+
+    .calendar-nav-label {
+      color: var(--accent);
+      font-family: 'Cinzel', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .months-container { display: flex; flex-direction: column; width: 100%; }
 
     .month-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 1rem;
+      width: 100%;
     }
 
     .month-title {
@@ -413,6 +438,9 @@
     @media (max-width: 600px) {
       .calendar-nav-bar { gap: 0.5rem; padding: 0.75rem; }
       .calendar-nav-bar .btn { padding: 0.45rem 0.55rem; font-size: 0.75rem; }
+      .calendar-controls { grid-template-columns: 1fr; gap: 0.5rem; }
+      .calendar-nav-bar.calendar-nav-group { padding: 0.6rem; }
+      .calendar-nav-label { font-size: 0.9rem; }
       .month-card { padding: 0.6rem; }
       .calendar-weekdays, .days-grid { gap: 0.2rem; }
       .calendar-weekday { font-size: 0.58rem; padding: 0.35rem 0; }
@@ -747,9 +775,8 @@
     let adminEmailsList = [];
     let searchQuery = "";
     
-    // Stato del calendario visualizzato
     let currentCalendarYear = 1;
-    let currentCalendarMonth = "";
+    let currentCalendarMonthIndex = 0;
     
     let calendarSettings = {
       eraName: "Quinta Era",
@@ -967,27 +994,17 @@
       const errors = [];
       sectionsData.forEach(section => {
         const cards = Array.isArray(section.cards) ? section.cards : [];
-        if (section.id === "calendar-events") {
-          cards.forEach(card => {
-            if (!months.includes(card.month)) {
-              errors.push(`Evento "${card.title}" ha il mese non valido "${card.month}".`);
-            } else if (card.day > getMonthLength(card.month, monthLengths)) {
-              errors.push(`Evento "${card.title}" usa il giorno ${card.day}, ma ${card.month} ha max${getMonthLength(card.month, monthLengths)} giorni.`);
+        cards.forEach(item => {
+          const events = section.id === "calendar-events" ? [item] : (Array.isArray(item.extraFields) ? item.extraFields : []);
+          events.forEach(event => {
+            if (!event || !event.month || !event.day) return;
+            const monthName = String(event.month);
+            const day = Number(event.day);
+            if (months.includes(monthName) && (!Number.isInteger(day) || day < 1 || day > getMonthLength(monthName, monthLengths))) {
+              errors.push(`${event.title || event.label || item.title || "Evento"}: ${monthName} ${event.day}`);
             }
           });
-        } else {
-          cards.forEach(card => {
-            (card.extraFields || []).forEach(ef => {
-              if (ef && ef.year && ef.month && ef.day) {
-                if (!months.includes(ef.month)) {
-                  errors.push(`Sotto-finestra "${ef.label || card.title}" nella scheda "${card.title}" ha il mese non valido "${ef.month}".`);
-                } else if (Number(ef.day) > getMonthLength(ef.month, monthLengths)) {
-                  errors.push(`Sotto-finestra "${ef.label || card.title}" nella scheda "${card.title}" usa il giorno ${ef.day}, ma ${ef.month} ha max${getMonthLength(ef.month, monthLengths)} giorni.`);
-                }
-              }
-            });
-          });
-        }
+        });
       });
       return errors;
     }
@@ -1010,14 +1027,12 @@
         if (cfgCalBtn) cfgCalBtn.style.display = (currentUserRole !== 'visitor') ? 'inline-flex' : 'none';
 
         if (grid) {
+          grid.classList.add('calendar-layout');
           grid.innerHTML = '';
 
           const monthsList = getMonthsList();
-          const daysList = getDaysList();
-
-          if (!currentCalendarMonth || !monthsList.includes(currentCalendarMonth)) {
-            currentCalendarMonth = monthsList[0] || '';
-          }
+          if (currentCalendarMonthIndex >= monthsList.length) currentCalendarMonthIndex = monthsList.length - 1;
+          if (currentCalendarMonthIndex < 0) currentCalendarMonthIndex = 0;
 
           let allEvents = [];
           sectionsData.forEach(sec => {
@@ -1047,13 +1062,684 @@
             }
           });
 
-          // Barra di navigazione ANNO e MESE affiancati
-          const navBar = document.createElement('div');
-          navBar.className = 'calendar-nav-bar';
+          const monthsContainer = document.createElement('div');
+          monthsContainer.className = 'months-container';
+          const daysList = getWeekdaysForGrid();
 
-          const yearGroup = document.createElement('div');
-          yearGroup.className = 'calendar-controls-group';
-          yearGroup.innerHTML = `
-            <span style="font-size:0.85rem; color:var(--text-muted); font-weight:bold;">${escapeHtml(calendarSettings.eraName || 'Era')}:</span>
-            <button class="btn btn-secondary" style="padding: 4px 10px;" onclick="changeYear(-1)"><i class="fa-solid fa-chevron-left"></i></button>
-            <input type="number" id="calendar-year-input" value="${currentCalendarYear}" min="1" style="width: 80px; text-align: center; padding:
+          const calendarControls = document.createElement('div');
+          calendarControls.className = 'calendar-controls';
+
+          const yearNavBar = document.createElement('div');
+          yearNavBar.className = 'calendar-nav-bar calendar-nav-group';
+          yearNavBar.innerHTML = `
+            <button class="btn btn-secondary" onclick="changeYear(-1)" aria-label="Anno precedente"><i class="fa-solid fa-chevron-left"></i></button>
+            <span class="calendar-nav-label">${escapeHtml(calendarSettings.eraName || 'Anno')} ${currentCalendarYear}</span>
+            <button class="btn btn-secondary" onclick="changeYear(1)" aria-label="Anno successivo"><i class="fa-solid fa-chevron-right"></i></button>
+          `;
+          calendarControls.appendChild(yearNavBar);
+
+          const selectedMonthName = monthsList[currentCalendarMonthIndex];
+          const monthNavBar = document.createElement('div');
+          monthNavBar.className = 'calendar-nav-bar calendar-nav-group';
+          monthNavBar.innerHTML = `
+            <button class="btn btn-secondary" onclick="changeMonth(-1)" aria-label="Mese precedente"><i class="fa-solid fa-chevron-left"></i></button>
+            <span class="calendar-nav-label">${escapeHtml(selectedMonthName || 'Nessun mese')}</span>
+            <button class="btn btn-secondary" onclick="changeMonth(1)" aria-label="Mese successivo"><i class="fa-solid fa-chevron-right"></i></button>
+          `;
+          calendarControls.appendChild(monthNavBar);
+          grid.appendChild(calendarControls);
+
+          const monthName = selectedMonthName;
+          if (monthName) {
+            const monthCard = document.createElement('div');
+            monthCard.className = 'month-card';
+
+            const mTitle = document.createElement('div');
+            mTitle.className = 'month-title';
+            const monthLength = getMonthLength(monthName);
+            mTitle.innerHTML = `<span style="color:var(--text-muted); font-family:'Inter',sans-serif; font-size:0.78rem;">${monthLength} giorni</span>`;
+            mTitle.style.textAlign = 'right';
+            monthCard.appendChild(mTitle);
+
+            const weekdaysHeader = document.createElement('div');
+            weekdaysHeader.className = 'calendar-weekdays';
+            weekdaysHeader.setAttribute('aria-label', 'Giorni della settimana');
+            daysList.forEach(dayName => {
+              const weekday = document.createElement('div');
+              weekday.className = 'calendar-weekday';
+              weekday.textContent = dayName;
+              weekdaysHeader.appendChild(weekday);
+            });
+            monthCard.appendChild(weekdaysHeader);
+
+            const daysGrid = document.createElement('div');
+            daysGrid.className = 'days-grid';
+
+            const daysBeforeYear = Math.max(0, currentCalendarYear - 1) * getYearLength(monthsList);
+            const monthIndex = monthsList.indexOf(monthName);
+            const daysBeforeMonth = monthsList
+              .slice(0, monthIndex)
+              .reduce((total, name) => total + getMonthLength(name), 0);
+            const monthStartWeekday = (daysBeforeYear + daysBeforeMonth) % 7;
+            for (let blank = 0; blank < monthStartWeekday; blank++) {
+              const emptyCell = document.createElement('div');
+              emptyCell.className = 'calendar-day-empty';
+              emptyCell.setAttribute('aria-hidden', 'true');
+              daysGrid.appendChild(emptyCell);
+            }
+
+            for (let d = 1; d <= monthLength; d++) {
+              const dayEvents = allEvents.filter(ev => ev.year === currentCalendarYear && ev.month === monthName && ev.day === d);
+              const hasEvents = dayEvents.length > 0;
+
+              const dayBox = document.createElement('div');
+              dayBox.className = `day-box ${hasEvents ? 'has-events' : ''}`;
+              dayBox.setAttribute('role', 'button');
+              dayBox.setAttribute('tabindex', '0');
+              dayBox.setAttribute('aria-label', `${daysList[(monthStartWeekday + d - 1) % 7]}, ${d} ${monthName}${hasEvents ? `, ${dayEvents.length} eventi` : ''}`);
+              
+              let previewHtml = '';
+              if (hasEvents) {
+                previewHtml = `<div class="day-events-preview"><i class="fa-solid fa-star"></i> ${escapeHtml(dayEvents[0].title)}</div>`;
+              }
+
+              dayBox.innerHTML = `
+                <div>
+                  <div class="day-number">${d}</div>
+                </div>
+                ${previewHtml}
+              `;
+
+              dayBox.onclick = () => openDayDetailsModal(currentCalendarYear, monthName, d, dayEvents);
+              dayBox.onkeydown = (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openDayDetailsModal(currentCalendarYear, monthName, d, dayEvents);
+                }
+              };
+              daysGrid.appendChild(dayBox);
+            }
+
+            monthCard.appendChild(daysGrid);
+            monthsContainer.appendChild(monthCard);
+          }
+
+          grid.appendChild(monthsContainer);
+        }
+        return;
+      }
+
+      if (grid) grid.classList.remove('calendar-layout');
+      const sec = sectionsData.find(s => s.id === activeSectionId);
+      if (!sec) {
+        if (titleEl) titleEl.innerText = "Seleziona una Sezione";
+        if (descEl) descEl.innerText = "";
+        if (grid) grid.innerHTML = "";
+        return;
+      }
+
+      if (titleEl) titleEl.innerText = sec.title;
+      if (descEl) descEl.innerText = sec.desc || '';
+      if (grid) grid.innerHTML = '';
+      if (addCalBtn) addCalBtn.style.display = 'none';
+      if (cfgCalBtn) cfgCalBtn.style.display = 'none';
+      if (addCardBtn) addCardBtn.style.display = (currentUserRole !== 'visitor' && sec.id !== 'calendar-events') ? 'inline-flex' : 'none';
+      if (delSecBtn) delSecBtn.style.display = (currentUserRole !== 'visitor' && sec.id !== 'calendar-events') ? 'inline-flex' : 'none';
+
+      let cards = (Array.isArray(sec.cards) ? sec.cards : []).map((card, index) => ({ card, index }));
+      if (sec.id === 'calendar-events') return;
+
+      if (searchQuery.trim() !== "") {
+        const q = searchQuery.toLowerCase();
+        cards = cards.filter(({ card }) =>
+          (card.title && card.title.toLowerCase().includes(q)) ||
+          (card.desc && card.desc.toLowerCase().includes(q)) ||
+          (currentUserRole !== 'visitor' && card.secret && card.secret.toLowerCase().includes(q))
+        );
+      }
+
+      if (cards.length === 0) {
+        if (grid) grid.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessuna scheda trovata.</p>';
+        return;
+      }
+
+      cards.forEach(({ card, index: cardIdx }) => {
+        let extraFieldsHtml = '';
+        if (card.extraFields && Array.isArray(card.extraFields)) {
+          card.extraFields.forEach(ef => {
+            if (ef.label || ef.value) {
+              const dateStr = ef.year ? `Giorno ${ef.day} di ${ef.month}, Anno ${ef.year}` : '';
+              const dateHtml = dateStr ? `<span class="extra-field-date"><i class="fa-regular fa-calendar"></i> ${escapeHtml(dateStr)}</span>` : '';
+              extraFieldsHtml += `
+                <div class="extra-field-box">
+                  <div class="extra-field-header">
+                    <span class="extra-field-title"><i class="fa-solid fa-bookmark"></i> ${escapeHtml(ef.label || 'Approfondimento')}</span>
+                    ${dateHtml}
+                  </div>
+                  <div style="color: var(--text); white-space: pre-line; line-height: 1.4;">${escapeHtml(ef.value || '')}</div>
+                </div>
+              `;
+            }
+          });
+        }
+
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card';
+        cardDiv.innerHTML = `
+          <img src="${escapeHtml(card.img || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500')}" class="card-img" alt="${escapeHtml(card.title)}">
+          <div class="card-body">
+            <h3 class="card-title">${escapeHtml(card.title)}</h3>
+            <p style="margin:0; font-size:0.9rem; color: #cbd5e1; line-height:1.4; white-space: pre-line;">${escapeHtml(card.desc)}</p>
+            
+            <div class="extra-fields-container">
+              ${extraFieldsHtml}
+            </div>
+
+            ${currentUserRole !== 'visitor' && card.secret ? `<div class="secret-box"><strong>🔒 Note Segrete:</strong> ${escapeHtml(card.secret)}</div>` : ''}
+            
+            ${currentUserRole !== 'visitor' ? `
+              <div class="card-actions">
+                <button class="btn btn-secondary" style="font-size:0.75rem; padding: 4px 8px;" onclick="openEditCardModal(${cardIdx})"><i class="fa-solid fa-pen"></i> Modifica</button>
+                <button class="btn btn-danger" style="font-size:0.75rem; padding: 4px 8px;" onclick="deleteCard(${cardIdx})"><i class="fa-solid fa-trash"></i> Elimina</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        grid.appendChild(cardDiv);
+      });
+    }
+
+    window.changeYear = (delta) => {
+      currentCalendarYear += delta;
+      if (currentCalendarYear < 1) currentCalendarYear = 1;
+      renderActiveSection();
+    };
+
+    window.changeMonth = (delta) => {
+      const months = getMonthsList();
+      if (months.length === 0) return;
+
+      currentCalendarMonthIndex += delta;
+      if (currentCalendarMonthIndex >= months.length) {
+        currentCalendarMonthIndex = 0;
+        currentCalendarYear += 1;
+      } else if (currentCalendarMonthIndex < 0) {
+        if (currentCalendarYear > 1) {
+          currentCalendarMonthIndex = months.length - 1;
+          currentCalendarYear -= 1;
+        } else {
+          currentCalendarMonthIndex = 0;
+        }
+      }
+      renderActiveSection();
+    };
+
+    window.openDayDetailsModal = (year, month, day, events) => {
+      document.getElementById('day-modal-title').innerText = `Giorno ${day} di ${month} (Anno ${year})`;
+      const listDiv = document.getElementById('day-modal-events-list');
+      listDiv.innerHTML = '';
+
+      if (events.length === 0) {
+        listDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nessun evento registrato in questa data.</p>';
+      } else {
+        events.forEach(ev => {
+          const item = document.createElement('div');
+          item.style.background = '#000';
+          item.style.border = '1px solid var(--border)';
+          item.style.padding = '1rem';
+          item.style.borderRadius = '6px';
+          item.innerHTML = `
+            <h4 style="font-family: 'Cinzel'; color: var(--accent); margin: 0 0 0.5rem 0; font-size: 1rem;">${escapeHtml(ev.title)}</h4>
+            <p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: var(--text); white-space: pre-line;">${escapeHtml(ev.desc || 'Nessuna descrizione.')}</p>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">Fonte: ${escapeHtml(ev.source)}</div>
+          `;
+          listDiv.appendChild(item);
+        });
+      }
+
+      openModal('day-details-modal');
+    };
+
+    window.handleSearch = () => {
+      const input = document.getElementById('global-search');
+      searchQuery = input ? input.value : "";
+      renderActiveSection();
+    };
+
+    function updateUI() {
+      const loginBtn = document.getElementById('login-btn');
+      const userInfo = document.getElementById('user-info');
+      const userDisplay = document.getElementById('user-display');
+      const roleBanner = document.getElementById('role-banner');
+      const addSecBtn = document.getElementById('add-sec-btn');
+      const manageAdminsBtn = document.getElementById('manage-admins-btn');
+
+      if (currentUserRole !== "visitor") {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (userInfo) userInfo.style.display = 'flex';
+        if (userDisplay) userDisplay.innerText = `${currentUserEmail} (${currentUserRole.toUpperCase()})`;
+
+        if (roleBanner) {
+          roleBanner.className = `status-banner ${currentUserRole}`;
+          roleBanner.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Accesso <strong>${currentUserRole.toUpperCase()}</strong> attivo.`;
+          roleBanner.style.display = 'flex';
+        }
+
+        if (addSecBtn) addSecBtn.style.display = 'inline-flex';
+        if (manageAdminsBtn) manageAdminsBtn.style.display = (currentUserRole === 'creator') ? 'inline-flex' : 'none';
+      } else {
+        if (loginBtn) loginBtn.style.display = 'inline-flex';
+        if (userInfo) userInfo.style.display = 'none';
+        if (roleBanner) roleBanner.style.display = 'none';
+        if (addSecBtn) addSecBtn.style.display = 'none';
+        if (manageAdminsBtn) manageAdminsBtn.style.display = 'none';
+      }
+
+      renderActiveSection();
+    }
+
+    window.openModal = (id) => {
+      const modal = document.getElementById(id);
+      if (modal) {
+        if (id === 'calendar-config-modal') {
+          document.getElementById('cfg-era-name').value = calendarSettings.eraName || '';
+          document.getElementById('cfg-months-names').value = calendarSettings.months || '';
+          document.getElementById('cfg-days-names').value = calendarSettings.days || '';
+          window.renderMonthLengthInputs();
+        }
+        modal.style.display = 'flex';
+      }
+    };
+
+    window.closeModal = (id) => {
+      const modal = document.getElementById(id);
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.saveCalendarConfig = async () => {
+      const eraName = document.getElementById('cfg-era-name').value.trim();
+      const months = document.getElementById('cfg-months-names').value.trim();
+      const days = document.getElementById('cfg-days-names').value.trim();
+      const rawMonthsList = months.split(',').map(name => name.trim()).filter(Boolean);
+      const monthsList = [...new Set(rawMonthsList)];
+      const monthLengths = {};
+
+      if (monthsList.length === 0) {
+        alert("Inserisci almeno un nome di mese.");
+        return;
+      }
+      if (monthsList.length !== rawMonthsList.length) {
+        alert("Ogni mese deve avere un nome univoco.");
+        return;
+      }
+
+      document.querySelectorAll("#cfg-month-length-fields input[data-month-name]").forEach(input => {
+        monthLengths[input.dataset.monthName] = Number(input.value);
+      });
+
+      const invalidLength = monthsList.find(name => !Number.isInteger(monthLengths[name]) || monthLengths[name] < 1 || monthLengths[name] > 366);
+      if (invalidLength) {
+        alert(`Il mese "${invalidLength}" deve avere da 1 a 366 giorni.`);
+        return;
+      }
+
+      const invalidEvents = findInvalidCalendarEvents(monthsList, monthLengths);
+      if (invalidEvents.length > 0) {
+        alert(`La modifica renderebbe non validi alcuni eventi. Spostali o correggili prima di ridurre la durata dei mesi:\n${invalidEvents.slice(0, 5).join("\n")}`);
+        return;
+      }
+
+      if (!window.firebaseDb) {
+        alert("Firebase non è disponibile: impossibile salvare la configurazione.");
+        return;
+      }
+
+      const docRef = window.doc(window.firebaseDb, "settings", "calendar");
+      try {
+        await window.setDoc(docRef, { eraName, months, days, monthLengths });
+        calendarSettings = { eraName, months, days, monthLengths };
+        renderActiveSection();
+        closeModal('calendar-config-modal');
+      } catch (e) {
+        alert("Errore salvataggio configurazione: " + e.message);
+      }
+    };
+
+    function populateMonthSelect(selectId, selectedVal = '') {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      select.innerHTML = '';
+      const months = getMonthsList();
+      months.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.innerText = m;
+        if (m === selectedVal) opt.selected = true;
+        select.appendChild(opt);
+      });
+      if (selectId === "cal-event-month") updateCalendarEventDayLimit();
+    }
+
+    window.updateCalendarEventDayLimit = () => {
+      const monthSelect = document.getElementById("cal-event-month");
+      const dayInput = document.getElementById("cal-event-day");
+      const dayLabel = document.getElementById("cal-event-day-label");
+      if (!monthSelect || !dayInput) return;
+      const maxDay = getMonthLength(monthSelect.value);
+      dayInput.max = String(maxDay);
+      if (dayLabel) dayLabel.textContent = `Giorno del mese (1-${maxDay})`;
+      if (Number(dayInput.value) > maxDay) dayInput.value = String(maxDay);
+    };
+
+    window.openAddCardModal = () => {
+      if (currentUserRole === "visitor" || activeSectionId === "CALENDAR_VIEW") return;
+      document.getElementById("card-modal-title").innerText = "Nuova Scheda";
+      document.getElementById("edit-card-index").value = "-1";
+      document.getElementById("card-title-input").value = "";
+      document.getElementById("card-img-input").value = "";
+      document.getElementById("card-desc-input").value = "";
+      document.getElementById("card-secret-input").value = "";
+      document.getElementById("extra-fields-inputs-container").innerHTML = "";
+      window.openModal("card-modal");
+    };
+
+    window.openEditCardModal = (index) => {
+      const section = sectionsData.find(item => item.id === activeSectionId);
+      const card = section && section.cards && section.cards[index];
+      if (!section || !card || currentUserRole === "visitor") return;
+
+      document.getElementById("card-modal-title").innerText = "Modifica Scheda";
+      document.getElementById("edit-card-index").value = String(index);
+      document.getElementById("card-title-input").value = card.title || "";
+      document.getElementById("card-img-input").value = card.img || "";
+      document.getElementById("card-desc-input").value = card.desc || "";
+      document.getElementById("card-secret-input").value = card.secret || "";
+
+      const container = document.getElementById("extra-fields-inputs-container");
+      container.innerHTML = "";
+      (Array.isArray(card.extraFields) ? card.extraFields : []).forEach(field => {
+        window.addExtraFieldInput(field.label || "", field.value || "", field.year || "", field.month || "", field.day || "");
+      });
+      window.openModal("card-modal");
+    };
+
+    window.addExtraFieldInput = (label = "", value = "", year = "", month = "", day = "") => {
+      const container = document.getElementById("extra-fields-inputs-container");
+      const row = document.createElement("div");
+      row.className = "dynamic-field-row";
+
+      const labelInput = document.createElement("input");
+      labelInput.type = "text";
+      labelInput.placeholder = "Titolo";
+      labelInput.value = label;
+
+      const valueInput = document.createElement("textarea");
+      valueInput.rows = 2;
+      valueInput.placeholder = "Descrizione extra";
+      valueInput.value = value;
+
+      const monthInput = document.createElement("input");
+      monthInput.type = "text";
+      monthInput.placeholder = "Mese (facoltativo)";
+      monthInput.value = month;
+
+      const dayInput = document.createElement("input");
+      dayInput.type = "number";
+      dayInput.min = "1";
+      dayInput.max = "366";
+      dayInput.placeholder = "Giorno";
+      dayInput.value = day;
+
+      const yearInput = document.createElement("input");
+      yearInput.type = "number";
+      yearInput.placeholder = "Anno";
+      yearInput.value = year;
+
+      const dateRow = document.createElement("div");
+      dateRow.style.cssText = "display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0.5rem;";
+      dateRow.append(monthInput, dayInput, yearInput);
+
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "btn btn-danger";
+      removeButton.textContent = "Rimuovi sotto-finestra";
+      removeButton.onclick = () => row.remove();
+
+      row.append(labelInput, valueInput, dateRow, removeButton);
+      container.appendChild(row);
+    };
+
+    window.saveCard = async () => {
+      const section = sectionsData.find(item => item.id === activeSectionId);
+      if (!section || currentUserRole === "visitor") return;
+
+      const title = document.getElementById("card-title-input").value.trim();
+      if (!title) {
+        alert("Inserisci il nome o il titolo della scheda.");
+        return;
+      }
+
+      const extraFields = Array.from(document.querySelectorAll("#extra-fields-inputs-container .dynamic-field-row"))
+        .map(row => {
+          const inputs = row.querySelectorAll("input");
+          const textArea = row.querySelector("textarea");
+          return {
+            label: row.querySelector('input[type="text"]').value.trim(),
+            value: textArea.value.trim(),
+            month: inputs[1].value.trim(),
+            day: inputs[2].value.trim(),
+            year: inputs[3].value.trim()
+          };
+        })
+        .filter(field => field.label || field.value || field.month || field.day || field.year);
+
+      const invalidDate = extraFields.find(field => {
+        if (!field.year && !field.month && !field.day) return false;
+        const day = Number(field.day);
+        const year = Number(field.year);
+        return !getMonthsList().includes(field.month)
+          || !Number.isInteger(day)
+          || day < 1
+          || day > getMonthLength(field.month)
+          || !Number.isInteger(year)
+          || year < 1;
+      });
+      if (invalidDate) {
+        alert("Controlla la data della sotto-finestra: scegli un mese valido, un giorno presente nel mese e un anno maggiore di zero.");
+        return;
+      }
+
+      const card = {
+        title,
+        img: document.getElementById("card-img-input").value.trim(),
+        desc: document.getElementById("card-desc-input").value.trim(),
+        secret: document.getElementById("card-secret-input").value.trim(),
+        extraFields
+      };
+
+      const cardIndex = Number(document.getElementById("edit-card-index").value);
+      if (!Array.isArray(section.cards)) section.cards = [];
+      if (Number.isInteger(cardIndex) && cardIndex >= 0 && cardIndex < section.cards.length) {
+        section.cards[cardIndex] = card;
+      } else {
+        section.cards.push(card);
+      }
+
+      try {
+        await window.setDoc(window.doc(window.firebaseDb, "sections", section.id), {
+          title: section.title,
+          desc: section.desc || "",
+          cards: section.cards
+        });
+        window.closeModal("card-modal");
+      } catch (error) {
+        alert("Errore salvataggio scheda: " + error.message);
+      }
+    };
+
+    window.deleteCard = async (index) => {
+      const section = sectionsData.find(item => item.id === activeSectionId);
+      if (!section || currentUserRole === "visitor" || !Array.isArray(section.cards)) return;
+      if (!confirm("Vuoi eliminare questa scheda?")) return;
+
+      section.cards.splice(index, 1);
+      try {
+        await window.setDoc(window.doc(window.firebaseDb, "sections", section.id), {
+          title: section.title,
+          desc: section.desc || "",
+          cards: section.cards
+        });
+      } catch (error) {
+        alert("Errore eliminazione scheda: " + error.message);
+      }
+    };
+
+    window.addSection = async () => {
+      if (currentUserRole === "visitor") return;
+      const title = document.getElementById("sec-title-input").value.trim();
+      const desc = document.getElementById("sec-desc-input").value.trim();
+      if (!title) {
+        alert("Inserisci il titolo della sezione.");
+        return;
+      }
+
+      const id = `sezione-${Date.now()}`;
+      const section = { id, title, desc, cards: [] };
+      try {
+        await window.setDoc(window.doc(window.firebaseDb, "sections", id), {
+          title: section.title,
+          desc: section.desc,
+          cards: section.cards
+        });
+        document.getElementById("sec-title-input").value = "";
+        document.getElementById("sec-desc-input").value = "";
+        window.closeModal("add-sec-modal");
+      } catch (error) {
+        alert("Errore creazione sezione: " + error.message);
+      }
+    };
+
+    window.deleteActiveSection = async () => {
+      const section = sectionsData.find(item => item.id === activeSectionId);
+      if (!section || currentUserRole === "visitor" || section.id === "calendar-events") return;
+      if (!confirm(`Eliminare la sezione "${section.title}" e tutte le sue schede?`)) return;
+
+      try {
+        await window.deleteDoc(window.doc(window.firebaseDb, "sections", section.id));
+        activeSectionId = "PERSONAGGI_DEFAULT";
+      } catch (error) {
+        alert("Errore eliminazione sezione: " + error.message);
+      }
+    };
+
+    window.openAddCalendarModal = () => {
+      if (currentUserRole === "visitor") return;
+      document.getElementById("cal-event-year").value = String(currentCalendarYear);
+      document.getElementById("cal-event-day").value = "1";
+      document.getElementById("cal-event-title").value = "";
+      document.getElementById("cal-event-desc").value = "";
+      populateMonthSelect("cal-event-month");
+      window.openModal("calendar-modal");
+    };
+
+    window.saveCalendarEvent = async () => {
+      if (currentUserRole === "visitor") return;
+      const year = Number(document.getElementById("cal-event-year").value);
+      const month = document.getElementById("cal-event-month").value;
+      const day = Number(document.getElementById("cal-event-day").value);
+      const title = document.getElementById("cal-event-title").value.trim();
+      const desc = document.getElementById("cal-event-desc").value.trim();
+
+      if (!Number.isInteger(year) || year < 1 || !Number.isInteger(day) || day < 1 || day > getMonthLength(month) || !month || !title) {
+        alert("Controlla anno, mese, giorno e titolo dell'evento.");
+        return;
+      }
+
+      let section = sectionsData.find(item => item.id === "calendar-events");
+      if (!section) {
+        section = { id: "calendar-events", title: "Eventi del Calendario", desc: "", cards: [] };
+        sectionsData.push(section);
+      }
+      if (!Array.isArray(section.cards)) section.cards = [];
+      section.cards.push({ year, month, day, title, desc });
+
+      try {
+        await window.setDoc(window.doc(window.firebaseDb, "sections", section.id), {
+          title: section.title,
+          desc: section.desc || "",
+          cards: section.cards
+        });
+        window.closeModal("calendar-modal");
+      } catch (error) {
+        alert("Errore salvataggio evento: " + error.message);
+      }
+    };
+
+    window.addAdminRole = async () => {
+      if (currentUserRole !== "creator") {
+        alert("Solo il creatore può gestire gli amministratori.");
+        return;
+      }
+      const input = document.getElementById("new-admin-email");
+      const email = input.value.trim().toLowerCase();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert("Inserisci un indirizzo email valido.");
+        return;
+      }
+      try {
+        await window.setDoc(window.doc(window.firebaseDb, "admins", email), { email });
+        input.value = "";
+      } catch (error) {
+        alert("Errore aggiunta amministratore: " + error.message);
+      }
+    };
+
+    window.removeAdminRole = async (email) => {
+      if (currentUserRole !== "creator" || !email) return;
+      const normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail === String(window.CREATOR_EMAIL || "").toLowerCase()) return;
+      if (!confirm(`Rimuovere ${normalizedEmail} dagli amministratori?`)) return;
+      try {
+        await window.deleteDoc(window.doc(window.firebaseDb, "admins", normalizedEmail));
+      } catch (error) {
+        alert("Errore rimozione amministratore: " + error.message);
+      }
+    };
+
+    window.renderAdminsList = () => {
+      const list = document.getElementById("admins-list");
+      if (!list) return;
+      list.innerHTML = "";
+      if (adminEmailsList.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-muted);">Nessun admin configurato.</p>';
+        return;
+      }
+
+      adminEmailsList.forEach(email => {
+        const item = document.createElement("div");
+        item.className = "admin-list-item";
+        const label = document.createElement("span");
+        label.textContent = email;
+        item.appendChild(label);
+        if (currentUserRole === "creator" && email !== String(window.CREATOR_EMAIL || "").toLowerCase()) {
+          const button = document.createElement("button");
+          button.className = "btn btn-danger";
+          button.textContent = "Rimuovi";
+          button.onclick = () => window.removeAdminRole(email);
+          item.appendChild(button);
+        }
+        list.appendChild(item);
+      });
+    };
+
+    window.handleLogout = async () => {
+      if (!window.firebaseAuth) return;
+      try {
+        await window.signOut(window.firebaseAuth);
+      } catch (error) {
+        alert("Errore durante la disconnessione: " + error.message);
+      }
+    };
+  </script>
+</body>
+</html>
