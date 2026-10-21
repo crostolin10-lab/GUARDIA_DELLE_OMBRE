@@ -101,15 +101,21 @@
       white-space: nowrap;
     }
 
-    .search-box {
-      position: relative;
+    .search-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
       flex: 1;
-      max-width: 400px;
+      max-width: 430px;
+    }
+
+    .search-box {
+      flex: 1;
     }
 
     .search-box input {
       width: 100%;
-      padding: 0.5rem 1rem 0.5rem 2.5rem;
+      padding: 0.5rem 1rem;
       background: #000;
       border: 1px solid var(--border);
       color: #fff;
@@ -120,12 +126,9 @@
 
     .search-box input:focus { border-color: var(--accent); }
 
-    .search-box i {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
+    .search-icon {
       color: var(--text-muted);
+      flex-shrink: 0;
     }
 
     .btn {
@@ -453,7 +456,7 @@
     @media (max-width: 760px) {
       header { flex-wrap: wrap; padding: 0.75rem 1rem; }
       h1.title { font-size: 1.2rem; white-space: normal; }
-      .search-box { order: 3; flex-basis: 100%; max-width: none; }
+      .search-container { order: 3; flex-basis: 100%; max-width: none; }
       .app-container { flex-direction: column; }
       aside.sidebar {
         width: 100%;
@@ -545,9 +548,11 @@
     </div>
 
     <!-- BARRA DI RICERCA -->
-    <div class="search-box">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" id="global-search" placeholder="Cerca nel mondo..." oninput="handleSearch()">
+    <div class="search-container">
+      <div class="search-box">
+        <input type="text" id="global-search" placeholder="Cerca nel mondo..." oninput="handleSearch()">
+      </div>
+      <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
     </div>
 
     <div id="auth-actions">
