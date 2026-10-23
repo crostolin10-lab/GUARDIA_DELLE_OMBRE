@@ -633,8 +633,12 @@
   <div id="calendar-config-modal" class="modal">
     <div class="modal-content">
       <h3 style="font-family: 'Cinzel'; color: var(--accent); margin-top:0;">Configura Calendario</h3>
-      <p style="font-size:0.85rem; color: var(--text-muted);">Imposta il nome dell'era, i mesi, i giorni della settimana e il numero di giorni di ciascun mese.</p>
+      <p style="font-size:0.85rem; color: var(--text-muted);">Imposta l'anno iniziale, il nome dell'era, i mesi, i giorni della settimana e il numero di giorni di ciascun mese.</p>
 
+      <div class="form-group">
+        <label for="cfg-start-year">Anno iniziale</label>
+        <input type="number" id="cfg-start-year" min="1" step="1" value="1">
+      </div>
       <div class="form-group">
         <label>Nome dell'Era</label>
         <input type="text" id="cfg-era-name" placeholder="es. Quinta Era">
@@ -785,6 +789,7 @@
     
     let calendarSettings = {
       eraName: "Quinta Era",
+      startYear: 1,
       months: "Solaria, Lunaria, Umbralia, Marea",
       days: "Primus, Secundus, Tertius, Quartus, Quintus",
       monthLengths: {
@@ -810,6 +815,9 @@
         window.onSnapshot(calSettingsRef, (docSnap) => {
           if (docSnap.exists()) {
             calendarSettings = { ...calendarSettings, ...docSnap.data() };
+            if (currentCalendarYear < getCalendarStartYear()) {
+              currentCalendarYear = getCalendarStartYear();
+            }
             if (activeSectionId === "CALENDAR_VIEW") renderActiveSection();
           }
         });
@@ -939,6 +947,11 @@
     function getDaysList() {
       if (!calendarSettings.days) return ["Primus", "Secundus", "Tertius", "Quartus", "Quintus"];
       return calendarSettings.days.split(',').map(d => d.trim()).filter(Boolean);
+    }
+
+    function getCalendarStartYear() {
+      const startYear = Number(calendarSettings.startYear);
+      return Number.isInteger(startYear) && startYear >= 1 ? startYear : 1;
     }
 
     function getWeekdaysForGrid() {
@@ -1120,7 +1133,7 @@
             const daysGrid = document.createElement('div');
             daysGrid.className = 'days-grid';
 
-            const daysBeforeYear = Math.max(0, currentCalendarYear - 1) * getYearLength(monthsList);
+            const daysBeforeYear = Math.max(0, currentCalendarYear - getCalendarStartYear()) * getYearLength(monthsList);
             const monthIndex = monthsList.indexOf(monthName);
             const daysBeforeMonth = monthsList
               .slice(0, monthIndex)
@@ -1256,7 +1269,7 @@
 
     window.changeYear = (delta) => {
       currentCalendarYear += delta;
-      if (currentCalendarYear < 1) currentCalendarYear = 1;
+      if (currentCalendarYear < getCalendarStartYear()) currentCalendarYear = getCalendarStartYear();
       renderActiveSection();
     };
 
@@ -1269,7 +1282,7 @@
         currentCalendarMonthIndex = 0;
         currentCalendarYear += 1;
       } else if (currentCalendarMonthIndex < 0) {
-        if (currentCalendarYear > 1) {
+        if (currentCalendarYear > getCalendarStartYear()) {
           currentCalendarMonthIndex = months.length - 1;
           currentCalendarYear -= 1;
         } else {
@@ -1347,6 +1360,7 @@
       const modal = document.getElementById(id);
       if (modal) {
         if (id === 'calendar-config-modal') {
+          document.getElementById('cfg-start-year').value = String(getCalendarStartYear());
           document.getElementById('cfg-era-name').value = calendarSettings.eraName || '';
           document.getElementById('cfg-months-names').value = calendarSettings.months || '';
           document.getElementById('cfg-days-names').value = calendarSettings.days || '';
@@ -1362,6 +1376,7 @@
     };
 
     window.saveCalendarConfig = async () => {
+      const startYear = Number(document.getElementById('cfg-start-year').value);
       const eraName = document.getElementById('cfg-era-name').value.trim();
       const months = document.getElementById('cfg-months-names').value.trim();
       const days = document.getElementById('cfg-days-names').value.trim();
@@ -1369,6 +1384,10 @@
       const monthsList = [...new Set(rawMonthsList)];
       const monthLengths = {};
 
+      if (!Number.isInteger(startYear) || startYear < 1) {
+        alert("L'anno iniziale deve essere un numero intero maggiore di zero.");
+        return;
+      }
       if (monthsList.length === 0) {
         alert("Inserisci almeno un nome di mese.");
         return;
@@ -1401,8 +1420,9 @@
 
       const docRef = window.doc(window.firebaseDb, "settings", "calendar");
       try {
-        await window.setDoc(docRef, { eraName, months, days, monthLengths });
-        calendarSettings = { eraName, months, days, monthLengths };
+        await window.setDoc(docRef, { eraName, startYear, months, days, monthLengths });
+        calendarSettings = { eraName, startYear, months, days, monthLengths };
+        currentCalendarYear = startYear;
         renderActiveSection();
         closeModal('calendar-config-modal');
       } catch (e) {
